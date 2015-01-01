@@ -1,4 +1,3 @@
-const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 
 // no-ops function
 export function noop() {};
@@ -37,6 +36,8 @@ export const isFunction = isType('Function');
 export const isDate = isType('Date');
 export const isRegExp = isType('RegExp');
 
+const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
+
 // parse to string to primitive value
 //
 // "true" => true
@@ -48,9 +49,11 @@ export const isRegExp = isType('RegExp');
 export function toPrimitive(value) {
     if (typeof value !== 'string') {
         return value;
-    } else if (value === 'True') {
+    } else if (value === '') {
+        return '';
+    } else if (value === 'True' || value === 'true') {
         return true;
-    } else if (value === 'False') {
+    } else if (value === 'False' || value === 'false') {
         return false;
     }
 
@@ -160,7 +163,11 @@ export function extend(target, dict) {
     let i = keys.length;
 
     while (i--) {
-        target[keys[i]] = dict[keys[i]];
+        let key = keys[i];
+
+        if (hasOwn(dict, key)) {
+            target[key] = dict[key];
+        }
     }
 
     return target;
