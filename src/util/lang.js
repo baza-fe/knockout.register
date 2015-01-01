@@ -69,7 +69,7 @@ export function toArray(target) {
     let len = target.length;
     let result = [];
 
-    while (len-- >= 0) {
+    while (len-- > 0) {
         result[len] = target[len];
     }
 

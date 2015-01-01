@@ -142,17 +142,29 @@ describe('validProp', () => {
         expect(data[string]).toBe(string);
     });
 
-    it('should log error', () => {
+    it('should reuse observabled prop', () => {
+        const data = {};
+        const ob = ko.observable(string);
+
+        validProp(string, ob, data, { type: ko.types.String });
+        expect(data[string]).toBe(ob);
+    });
+
+    it('should log error for observabled prop', () => {
+        const data = {};
+        const ob = ko.observable(1);
+
         spyOn(console, 'error');
-        validProp(string, number, {}, ko.types.String);
-        expect(console.error).toHaveBeenCalled();
+        validProp(string, ob, data, { type: ko.types.String });
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: string, propValue: 1', data);
     });
 
     it('should log error: Invalid prop', () => {
-        console.error = (err) => {
-            expect(err).toBe('Invalid prop: key: string, propValue: 1');
-        };
-        expect(validProp(string, number, {}, { type: ko.types.String })).toBe(false);
+        const data = {};
+
+        spyOn(console, 'error');
+        expect(validProp(string, number, data, { type: ko.types.String })).toBe(false);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: string, propValue: 1', data);
     });
 
     it('should log error: Missing required prop', () => {
@@ -175,6 +187,23 @@ describe('validObject', () => {
 
     it('should return false', () => {
         expect(validObject(string, { p1: number, p2: number }, {}, shape)).toBe(false);
+    });
+
+    it('should reuse observabled prop', () => {
+        const data = {};
+        const ob = ko.observable({ p1: string, p2: string });
+
+        validObject(string, ob, data, shape);
+        expect(data[string]).toBe(ob);
+    });
+
+    it('should log error for observabled prop', () => {
+        const data = {};
+        const ob = ko.observable({ p1: number, p2: number });
+
+        spyOn(console, 'error');
+        validObject(string, ob, data, shape);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: p1, propValue: 1', data.string);
     });
 });
 
@@ -203,6 +232,23 @@ describe('validWithin', () => {
         validWithin(string, string, data, oneOfType);
         expect(data[string]).toBe(string);
     });
+
+    it('should reuse observabled prop', () => {
+        const data = {};
+        const ob = ko.observable(string);
+
+        validWithin(string, ob, data, oneOfType);
+        expect(data[string]).toBe(ob);
+    });
+
+    it('should log error for observabled prop', () => {
+        const data = {};
+        const ob = ko.observable(null);
+
+        spyOn(console, 'error');
+        validWithin(string, ob, data, oneOfType);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: null', []);
+    });
 });
 
 describe('validArray', () => {
@@ -213,7 +259,7 @@ describe('validArray', () => {
     }));
 
     it('should return true', () => {
-        expect(validArray(string, [ string, string, string ], [], arrayOfString[0])).toBe(true);
+        expect(validArray(string, [ string, string, string ], {}, arrayOfString[0])).toBe(true);
         expect(validArray(string, [
             {
                 p1: string,
@@ -227,11 +273,11 @@ describe('validArray', () => {
                 p1: string,
                 p2: string
             }
-        ], [], arrayOfShape[0])).toBe(true);
+        ], {}, arrayOfShape[0])).toBe(true);
     });
 
     it('should return false', () => {
-        expect(validArray(string, [ number, number, number ], [], arrayOfString[0])).toBe(false);
+        expect(validArray(string, [ number, number, number ], {}, arrayOfString[0])).toBe(false);
         expect(validArray(string, [
             {
                 p1: number,
@@ -245,16 +291,33 @@ describe('validArray', () => {
                 p1: number,
                 p2: number
             }
-        ], [], arrayOfShape[0])).toBe(false);
+        ], {}, arrayOfShape[0])).toBe(false);
     });
 
     it('should create items', () => {
-        const data = [];
+        const data = {};
 
         validArray(string, [ string, string, string ], data, arrayOfString[0]);
-        expect(data[0]).toBe(string);
-        expect(data[1]).toBe(string);
-        expect(data[2]).toBe(string);
+        expect(data[string][0]).toBe(string);
+        expect(data[string][1]).toBe(string);
+        expect(data[string][2]).toBe(string);
+    });
+
+    it('should reuse observabled prop', () => {
+        const data = {};
+        const ob = ko.observableArray([ string, string, string ]);
+
+        validArray(string, ob, data, arrayOfString[0]);
+        expect(data[string]).toBe(ob);
+    });
+
+    it('should log error for observabled prop', () => {
+        const data = {};
+        const ob = ko.observableArray([ number, number, number ]);
+
+        spyOn(console, 'error');
+        validArray(string, ob, data, arrayOfString[0]);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', data.string);
     });
 });
 
@@ -283,4 +346,3 @@ describe('observable', () => {
         observable(null, {});
     });
 });
-

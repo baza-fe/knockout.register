@@ -17,7 +17,7 @@ function isBasic(value) {
     return isString(value) || isNumber(value) || isBoolean(value);
 }
 
-// Clone array items and create observable array
+// Observable array and object items
 //
 // @param {Array} data
 export function observableArray(data) {
@@ -34,9 +34,9 @@ export function observableArray(data) {
     });
 
     return ko.observableArray(data);
-}
+};
 
-// Clone properties and create observable object
+// Observable object properties
 //
 // @param {Object} data
 export function observableObject(data) {
@@ -57,7 +57,7 @@ export function observableObject(data) {
     });
 
     return data;
-}
+};
 
 // Run validator on given prop
 //
@@ -68,25 +68,30 @@ export function observableObject(data) {
 // @return {Boolean}
 export function validProp(propName, propValue, data, validator) {
     const isWrapped = isObject(validator);
+    const isObservable = ko.isObservable(propValue);
     const required = isWrapped ? validator.required : false;
     const defaultValue = isWrapped ? validator.default : undefined;
 
+    let computedPropValue = ko.unwrap(propValue);
     validator = isWrapped ? validator.type : validator;
-    propValue = ko.unwrap(propValue);
-    propValue = propValue === undefined ? defaultValue : propValue;
+
+    if (!isObservable) {
+        propValue = propValue === undefined ? defaultValue : propValue;
+        computedPropValue = propValue;
+    }
 
     // required
-    if (propValue === undefined && required) {
+    if (computedPropValue === undefined && required) {
         warn(`Invalid prop: Missing required prop: ${propName}`, data);
         return false;
-    } else if (!validator(propValue)) {
-        warn(`Invalid prop: key: ${propName}, propValue: ${propValue}`, data);
+    } else if (!validator(computedPropValue)) {
+        warn(`Invalid prop: key: ${propName}, propValue: ${computedPropValue}`, data);
         return false;
     } else {
         data[propName] = propValue;
         return true;
     }
-}
+};
 
 // Run object validators on given prop
 //
@@ -96,57 +101,59 @@ export function validProp(propName, propValue, data, validator) {
 // @param {Object} validators
 // @return {Boolean}
 export function validObject(propName, propValue, data, validators) {
-    propValue = ko.unwrap(propValue);
-    data = data[propName] = {};
-
-    return every(Object.keys(validators), (subPropName) => {
+    const computedPropValue = ko.unwrap(propValue);
+    const resultObject = {};
+    const result = every(Object.keys(validators), (subPropName) => {
         const validator = validators[subPropName];
-        const subPropValue = propValue ? propValue[subPropName] : undefined;
+        const subPropValue = computedPropValue ? computedPropValue[subPropName] : undefined;
 
-        if (isFunction(validator) || (isObject(validator) && hasOwn(validator, 'type'))) {
+        if (isFunction(validator) || (isObject(validator) && isFunction(validator.type))) {
             return validProp(
                 subPropName,
                 subPropValue,
-                data,
+                resultObject,
                 validator
             );
-        } else if (isObject(validator)) {
-            data[subPropName] = {};
-
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
             return validObject(
                 subPropName,
                 subPropValue,
-                data[subPropName],
+                resultObject,
                 validator
             );
-        } else if (isArray(validator)) {
-            const len = validator.length;
+        } else if (isArray(validator) || isArray(validator.type)) {
+            const subValidator = validator.type ? validator.type : validator;
+            const len = subValidator.length;
 
             // oneOfType
             if (len > 1) {
                 return validWithin(
                     subPropName,
                     subPropValue,
-                    data,
-                    validator
+                    resultObject,
+                    subValidator
                 );
 
             // arrayOf
             } else {
-                data[subPropName] = [];
-
                 return validArray(
                     subPropName,
                     subPropValue,
-                    data[subPropName],
-                    validator[0]
+                    resultObject,
+                    subValidator[0]
                 );
             }
         } else {
-            warn(`Invalid validator: ${validator}`, data);
+            warn(`Invalid validator: ${validator}`, resultObject);
             return false;
         }
     });
+
+    data[propName] = (result && ko.isObservable(propValue))
+        ? propValue
+        : resultObject;
+
+     return result;
 };
 
 // Run validators on given prop
@@ -157,49 +164,52 @@ export function validObject(propName, propValue, data, validators) {
 // @param {Array} validators
 // @return {Boolean}
 export function validWithin(propName, propValue, data, validators) {
-    propValue = ko.unwrap(propValue);
+    const computedPropValue = ko.unwrap(propValue);
+    const result = some(validators, (validator) => {
+        return validArray(propName, [ computedPropValue ], {}, validator);
+    });
 
-    return some(validators, (validator) => {
-        return validArray(propName, [ propValue ], [], validator);
-    }) ? (data[propName] = propValue) !== undefined : false;
+    data[propName] = result ? propValue : null;
+
+    return result;
 };
 
 // Run validator on given array prop
 //
 // @param {String} propName
 // @param {Array} propValue
-// @param {Array} data
+// @param {Object} data
 // @param {Object|Array|Function} validator
 // @return {Boolean}
 export function validArray(propName, propValue, data, validator) {
+    const computedPropValue = ko.unwrap(propValue);
     let validMethod;
-    let useValidArray = false;
 
-    if (isFunction(validator) || (isObject(validator) && hasOwn(validator, 'type'))) {
+    if (isFunction(validator) || (isObject(validator) && isFunction(validator.type))) {
         validMethod = validProp;
-    } else if (isObject(validator)) {
+    } else if (isObject(validator) && !hasOwn(validator, 'type')) {
         validMethod = validObject;
-    } else if (isArray(validator)) {
+    } else if (isArray(validator) || isArray(validator.type)) {
         if (validator.length > 1) {
             validMethod = validWithin;
         } else {
             validMethod = validArray;
-            useValidArray = true;
         }
     } else {
         warn(`Invalid validator: ${validator}`, data);
         return false;
     }
 
-    propValue = ko.unwrap(propValue);
-
-    return every(propValue, (item, i) => {
-        const validResult = useValidArray ? [] : {};
-
-        return validMethod(i, item, validResult, validator)
-            ? data.push(useValidArray ? validResult : validResult[i]) !== undefined
-            : false;
+    const resultArray = [];
+    const result = every(computedPropValue, (item, i) => {
+        return validMethod(i, item, resultArray, validator);
     });
+
+    data[propName] = (result && ko.isObservable(propValue))
+        ? propValue
+        : resultArray;
+
+    return result;
 };
 
 // Create view model according to validators
