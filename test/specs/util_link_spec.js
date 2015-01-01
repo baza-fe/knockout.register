@@ -109,9 +109,9 @@ describe('linkArrayObservable.push', () => {
         ob.push(number2);
         ob.push(number3);
 
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 2', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 3', []);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 1');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 2');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 3');
     });
 
     it('should ignore invalid items', () => {
@@ -154,9 +154,9 @@ describe('linkArrayObservable.unshift', () => {
         ob.unshift(number2);
         ob.unshift(number3);
 
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 2', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 3', []);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 1');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 2');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 3');
     });
 
     it('should ignore invalid items', () => {
@@ -197,9 +197,9 @@ describe('linkArrayObservable.splice', () => {
         ob.splice(0, 0, number2);
         ob.splice(0, 0, number3);
 
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 2', []);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 3', []);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 1');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 2');
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 3');
     });
 
     it('should ignore invalid items', () => {
@@ -219,12 +219,12 @@ describe('linkArrayObservable.splice', () => {
     });
 });
 
-describe('linkObjectObservable', () => {
-    it('should link observabled array property', () => {
+// describe('linkObjectObservable', () => {
+//     it('should link observabled array property', () => {
 
-    });
+//     });
 
-    it('should link nested observabled array property', () => {
+//     it('should link nested observabled array property', () => {
 
-    });
-});
+//     });
+// });

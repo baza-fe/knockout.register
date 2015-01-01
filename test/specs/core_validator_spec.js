@@ -5,6 +5,10 @@ import {
     isObject,
     isFunction
 } from '../../src/util/';
+import {
+    defineValidator,
+    defineValidatorName
+} from '../../src/core/validator';
 
 const node = document.createElement('div');
 const now = new Date();
@@ -316,5 +320,52 @@ describe('oneOfType', () => {
         expect(oneOfType[0]).toBe(ko.types.String);
         expect(oneOfType[1]).toBe(ko.types.Number);
         expect(oneOfType[2]).toBe(ko.types.Boolean);
+    });
+});
+
+describe('defineValidator', () => {
+    it('should return true', () => {
+        const v1 = noop;
+        const v2 = { type: noop };
+
+        expect(defineValidator(v1)).toBe(noop);
+        expect(defineValidator(v2)).toBe(noop);
+    });
+});
+
+describe('defineValidatorName', () => {
+    it('should return true', () => {
+        expect(defineValidatorName(ko.types.String)).toBe('ko.types.String');
+        expect(defineValidatorName(ko.types.Number)).toBe('ko.types.Number');
+        expect(defineValidatorName(ko.types.Boolean)).toBe('ko.types.Boolean');
+        expect(defineValidatorName(ko.types.object)).toBe('ko.types.object');
+        expect(defineValidatorName(ko.types.Array)).toBe('ko.types.Array');
+        expect(defineValidatorName(ko.types.Function)).toBe('ko.types.Function');
+        expect(defineValidatorName(ko.types.Date)).toBe('ko.types.Date');
+        expect(defineValidatorName(ko.types.RegExp)).toBe('ko.types.RegExp');
+        expect(defineValidatorName(ko.types.Node)).toBe('ko.types.Node');
+        expect(defineValidatorName(ko.types.Element)).toBe('ko.types.Element');
+
+        expect(defineValidatorName(ko.types.string)).toBe('ko.types.string');
+        expect(defineValidatorName(ko.types.number)).toBe('ko.types.number');
+        expect(defineValidatorName(ko.types.boolean)).toBe('ko.types.boolean');
+        expect(defineValidatorName(ko.types.object)).toBe('ko.types.object');
+        expect(defineValidatorName(ko.types.array)).toBe('ko.types.array');
+        expect(defineValidatorName(ko.types.function)).toBe('ko.types.function');
+        expect(defineValidatorName(ko.types.date)).toBe('ko.types.date');
+        expect(defineValidatorName(ko.types.regexp)).toBe('ko.types.regexp');
+        expect(defineValidatorName(ko.types.node)).toBe('ko.types.node');
+        expect(defineValidatorName(ko.types.element)).toBe('ko.types.element');
+
+        expect(defineValidatorName(ko.types.instanceof)).toBe('ko.types.instanceof');
+        expect(defineValidatorName(ko.types.any)).toBe('ko.types.any');
+        expect(defineValidatorName(ko.types.oneOf(1, 2))).toBe('ko.types.oneOf');
+
+        expect(defineValidatorName(ko.types.shape({}))).toBe('ko.types.shape');
+        expect(defineValidatorName(ko.types.arrayOf(ko.types.String))).toBe('ko.types.arrayOf');
+        expect(defineValidatorName(ko.types.oneOfType(ko.types.String, ko.types.Boolean))).toBe('ko.types.oneOfType');
+
+        expect(defineValidatorName(function () {})).toBe('custom');
+        expect(defineValidatorName(function hello() {})).toBe('hello');
     });
 });
