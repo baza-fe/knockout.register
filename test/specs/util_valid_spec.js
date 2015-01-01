@@ -38,25 +38,26 @@ describe('validProp', () => {
 
     it('should create prop with default', () => {
         const data = {};
+        const value = undefined;
 
-        validProp(string, undefined, data, { type: ko.types.String, default: string });
+        validProp(string, value, data, { type: ko.types.String, default: string });
         expect(data[string]).toBe(string);
     });
 
     it('should reuse observabled prop', () => {
         const data = {};
-        const ob = ko.observable(string);
+        const value = ko.observable(string);
 
-        validProp(string, ob, data, { type: ko.types.String });
-        expect(data[string]).toBe(ob);
+        validProp(string, value, data, { type: ko.types.String });
+        expect(data[string]).toBe(value);
     });
 
     it('should log error for observabled prop', () => {
         const data = {};
-        const ob = ko.observable(1);
+        const value = ko.observable(1);
 
         spyOn(console, 'error');
-        validProp(string, ob, data, { type: ko.types.String });
+        validProp(string, value, data, { type: ko.types.String });
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: string, propValue: 1', data);
     });
 
@@ -70,14 +71,21 @@ describe('validProp', () => {
 
     it('should log error: Missing required prop', () => {
         const data = {};
+        const value = undefined;
 
         spyOn(console, 'error');
-        expect(validProp(string, undefined, data, { type: ko.types.String, required: true })).toBe(false);
+        expect(validProp(string, value, data, { type: ko.types.String, required: true })).toBe(false);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: Missing required prop: string', data);
     });
 
     it('should log warnning: Invalid prop', () => {
-        return true;
+        const data = {};
+        const value = undefined;
+
+        spyOn(console, 'warn');
+        expect(validProp(string, value, data, { type: ko.types.String })).toBe(true);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: string, propValue: undefined', data);
+        expect(data[string]).toBe(value);
     });
 });
 
@@ -97,23 +105,31 @@ describe('validObject', () => {
 
     it('should reuse observabled prop', () => {
         const data = {};
-        const ob = ko.observable({ p1: string, p2: string });
+        const value = ko.observable({ p1: string, p2: string });
 
-        validObject(string, ob, data, shape);
-        expect(data[string]).toBe(ob);
+        validObject(string, value, data, shape);
+        expect(data[string]).toBe(value);
     });
 
     it('should log error for observabled prop', () => {
         const data = {};
-        const ob = ko.observable({ p1: number, p2: number });
+        const value = ko.observable({ p1: number, p2: number });
 
         spyOn(console, 'error');
-        validObject(string, ob, data, shape);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: p1, propValue: 1', data.string);
+        validObject(string, value, data, shape);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: p1, propValue: 1', data[string]);
     });
 
     it('should log warnning: Invalid prop', () => {
-        return true;
+        const data = {};
+        const value = { p1: undefined, p2: undefined };
+
+        spyOn(console, 'warn');
+        validObject(string, value, data, shape);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: p1, propValue: undefined', data[string]);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: p2, propValue: undefined', data[string]);
+        expect(data[string].p1).toBe(value.p1);
+        expect(data[string].p2).toBe(value.p2);
     });
 });
 
@@ -145,23 +161,29 @@ describe('validWithin', () => {
 
     it('should reuse observabled prop', () => {
         const data = {};
-        const ob = ko.observable(string);
+        const value = ko.observable(string);
 
-        validWithin(string, ob, data, oneOfType);
-        expect(data[string]).toBe(ob);
+        validWithin(string, value, data, oneOfType);
+        expect(data[string]).toBe(value);
     });
 
     it('should log error for observabled prop', () => {
         const data = {};
-        const ob = ko.observable(null);
+        const value = ko.observable(null);
 
         spyOn(console, 'error');
-        validWithin(string, ob, data, oneOfType);
+        validWithin(string, value, data, oneOfType);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: null', []);
     });
 
     it('should log warnning: Invalid prop', () => {
-        return true;
+        const data = {};
+        const value = undefined;
+
+        spyOn(console, 'warn');
+        validWithin(string, value, data, oneOfType);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: undefined', [ value ]);
+        expect(data[string]).toBe(value);
     });
 });
 
@@ -219,23 +241,34 @@ describe('validArray', () => {
 
     it('should reuse observabled prop', () => {
         const data = {};
-        const ob = ko.observableArray([ string, string, string ]);
+        const value = ko.observableArray([ string, string, string ]);
 
-        validArray(string, ob, data, arrayOfString[0]);
-        expect(data[string]).toBe(ob);
+        validArray(string, value, data, arrayOfString[0]);
+        expect(data[string]).toBe(value);
     });
 
     it('should log error for observabled prop', () => {
         const data = {};
-        const ob = ko.observableArray([ number, number, number ]);
+        const value = ko.observableArray([ number, number, number ]);
 
         spyOn(console, 'error');
-        validArray(string, ob, data, arrayOfString[0]);
-        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', data.string);
+        validArray(string, value, data, arrayOfString[0]);
+        expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', data[string]);
     });
 
     it('should log warnning: Invalid prop', () => {
-        return true;
+        const data = {};
+        const value = [ undefined, undefined, undefined ];
+
+        spyOn(console, 'warn');
+        validArray(string, value, data, arrayOfString[0]);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: undefined', value);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: 1, propValue: undefined', value);
+        expect(console.warn).toHaveBeenCalledWith('Invalid prop: key: 2, propValue: undefined', value);
+        expect(data[string].length).toBe(value.length);
+        expect(data[string][0]).toBe(value[0]);
+        expect(data[string][1]).toBe(value[1]);
+        expect(data[string][2]).toBe(value[2]);
     });
 });
 
