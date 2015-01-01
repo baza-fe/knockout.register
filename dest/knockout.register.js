@@ -411,12 +411,12 @@ ko.components.getElementsByClassName = getElementsByClassName;
 
 var hasConsole = !!window.console;
 
-function error(msg, extra) {
-     hasConsole && console.error(msg, extra);
+function error(msg) {
+     hasConsole && console.error(msg);
 }
 
-function warn(msg, extra) {
-     hasConsole && console.warn(msg, extra);
+function warn(msg) {
+     hasConsole && console.warn(msg);
 }
 
 // Pluck dom node from given template
@@ -630,6 +630,126 @@ function pluck$$1(node) {
     return result;
 }
 
+function is(constructor) {
+    return function (actual) {
+        return actual instanceof constructor;
+    };
+}
+
+var isNode$1 = is(Node);
+var isElement = is(Element);
+
+ko.types = ko.types || {
+
+    // basic type validators
+    String: isString,
+    Number: isNumber,
+    Boolean: isBoolean,
+    Object: isObject$1,
+    Array: isArray$1,
+    Function: isFunction,
+    Date: isDate,
+    RegExp: isRegExp,
+    Node: isNode$1,
+    Element: isElement,
+
+    // basic type validators with default value
+    string: { type: isString, default: '' },
+    number: { type: isNumber, default: 0 },
+    boolean: { type: isBoolean, default: false },
+    object: { type: isObject$1, default: {} },
+    array: { type: isArray$1, default: [] },
+    function: { type: isFunction, default: noop },
+    date: { type: isDate, default: new Date() },
+    regexp: { type: isRegExp, default: null },
+    node: { type: isNode$1, default: null },
+    element: { type: isElement, default: null },
+
+    // basic type advance validators
+    instanceof: is,
+    any: function any(actual) {
+        return actual !== null && actual !== undefined;
+    },
+    oneOf: function oneOf() {
+        var enums = toArray(arguments);
+        var validator = function validator(actual) {
+            return some(enums, function (expected) {
+                return actual === expected;
+            });
+        };
+
+        // for define validator name
+        validator.__type_name = 'ko.types.oneOf';
+
+        return validator;
+    },
+
+
+    // combination type validators
+    // => [ ... ] List of validators at least fullfill one validator
+    // => { ... } Validators in { key: validator } pair all validators need to fullfill
+
+    // Construct shape validators
+    //
+    // @param {Object} plan
+    // @return {Object}
+    shape: function shape(plan) {
+        return plan;
+    },
+
+
+    // Construct array validators
+    //
+    // @param {Function} validator
+    // @return {Array}
+    arrayOf: function arrayOf(validator) {
+        return [validator];
+    },
+
+
+    // Construct type validators
+    //
+    // @param {Function...}
+    // @return {Array}
+    oneOfType: function oneOfType() {
+        return arguments.length > 1 ? toArray(arguments) : arguments[0];
+    }
+};
+
+var buildInValidators = Object.keys(ko.types);
+
+// Get validator
+//
+// @param {Any} validator
+// @return {ANy}
+function defineValidator(validator) {
+    return isObject$1(validator) && hasOwn(validator, 'type') ? validator.type : validator;
+}
+
+// Get validator name
+//
+// @param {Any} validator
+// @return {String}
+function defineValidatorName(validator) {
+    var name = '';
+    var computedValidator = defineValidator(validator);
+
+    if (isArray$1(computedValidator)) {
+        name = computedValidator.length === 1 ? 'arrayOf' : 'oneOfType';
+    } else if (isObject$1(computedValidator)) {
+        name = 'shape';
+    } else {
+        each(buildInValidators, function (key) {
+            if (validator === ko.types[key]) {
+                name = key;
+                return false;
+            }
+        });
+    }
+
+    return name ? 'ko.types.' + name : isFunction(validator) ? validator.__type_name || validator.name || 'custom' : validator;
+}
+
 // Run validator on given prop
 //
 // @param {String} propName
@@ -644,7 +764,7 @@ function validProp$$1(propName, propValue, data, validator) {
     var defaultValue = isWrapped ? validator.default : undefined;
 
     var computedPropValue = ko.unwrap(propValue);
-    validator = isWrapped ? validator.type : validator;
+    var computedValidator = isWrapped ? validator.type : validator;
 
     if (!isObservable) {
         propValue = propValue === undefined ? defaultValue : propValue;
@@ -652,16 +772,17 @@ function validProp$$1(propName, propValue, data, validator) {
     }
 
     var isUndefined = computedPropValue === undefined;
+    var validatorName = defineValidatorName(computedValidator);
 
     // required
     if (isUndefined && required) {
-        error('Invalid prop: Missing required prop: ' + propName, data);
+        error('Invalid prop: Missing required prop: ' + propName);
         return false;
-    } else if (!isUndefined && !validator(computedPropValue)) {
-        error('Invalid prop: key: ' + propName + ', propValue: ' + computedPropValue, data);
+    } else if (!isUndefined && !computedValidator(computedPropValue)) {
+        error('Invalid prop: key: ' + propName + ', expect: ' + validatorName + ', actual: ' + computedPropValue);
         return false;
     } else if (isUndefined) {
-        warn('Invalid prop: key: ' + propName + ', propValue: ' + computedPropValue, data);
+        warn('Need prop: key: ' + propName + ', expect: ' + validatorName + ', actual: ' + computedPropValue);
         data[propName] = undefined;
         return true;
     } else {
@@ -701,7 +822,7 @@ function validObject$$1(propName, propValue, data, validators) {
                 return validArray$$1(subPropName, subPropValue, resultObject, subValidator[0]);
             }
         } else {
-            error('Invalid validator: ' + validator, resultObject);
+            error('Invalid validator: ' + validator);
             return false;
         }
     });
@@ -751,7 +872,7 @@ function validArray$$1(propName, propValue, data, validator) {
             validMethod = validArray$$1;
         }
     } else {
-        error('Invalid validator: ' + validator, data);
+        error('Invalid validator: ' + validator);
         return false;
     }
 
@@ -1002,90 +1123,6 @@ var lifeComponentLoader = {
 };
 
 ko.components.loaders.unshift(lifeComponentLoader);
-
-function is(constructor) {
-    return function (actual) {
-        return actual instanceof constructor;
-    };
-}
-
-var isNode$1 = is(Node);
-var isElement = is(Element);
-
-var validators = {
-
-    // basic type validators
-    String: isString,
-    Number: isNumber,
-    Boolean: isBoolean,
-    Object: isObject$1,
-    Array: isArray$1,
-    Function: isFunction,
-    Date: isDate,
-    RegExp: isRegExp,
-    Node: isNode$1,
-    Element: isElement,
-
-    // basic type validators with default value
-    string: { type: isString, default: '' },
-    number: { type: isNumber, default: 0 },
-    boolean: { type: isBoolean, default: false },
-    object: { type: isObject$1, default: {} },
-    array: { type: isArray$1, default: [] },
-    function: { type: isFunction, default: noop },
-    date: { type: isDate, default: new Date() },
-    regexp: { type: isRegExp, default: null },
-    node: { type: isNode$1, default: null },
-    element: { type: isElement, default: null },
-
-    // basic type advance validators
-    instanceof: is,
-    any: function any(actual) {
-        return actual !== null && actual !== undefined;
-    },
-    oneOf: function oneOf() {
-        var enums = toArray(arguments);
-
-        return function (actual) {
-            return some(enums, function (expected) {
-                return actual === expected;
-            });
-        };
-    },
-
-
-    // combination type validators
-    // => [ ... ] List of validators at least fullfill one validator
-    // => { ... } Validators in { key: validator } pair all validators need to fullfill
-
-    // Construct shape validators
-    //
-    // @param {Object} plan
-    // @return {Object}
-    shape: function shape(plan) {
-        return plan;
-    },
-
-
-    // Construct array validators
-    //
-    // @param {Function} validator
-    // @return {Array}
-    arrayOf: function arrayOf(validator) {
-        return [validator];
-    },
-
-
-    // Construct type validators
-    //
-    // @param {Function...}
-    // @return {Array}
-    oneOfType: function oneOfType() {
-        return arguments.length > 1 ? toArray(arguments) : arguments[0];
-    }
-};
-
-ko.types = ko.types || validators;
 
 var modulePolyfill = {
     defaults: {},
