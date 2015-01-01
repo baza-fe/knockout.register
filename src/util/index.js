@@ -7,4 +7,6 @@ export * from './debug';
 export * from './slot';
 export * from './dom';
 export * from './pluck';
+export * from './valid';
+export * from './link';
 export * from './observable';

@@ -1,4 +1,3 @@
-
 // Check dom node by name
 //
 // @param {Node} target

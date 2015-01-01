@@ -3,7 +3,9 @@ import {
     mixin,
     pluck,
     extend,
-    observable,
+    valid,
+    linkObjectObservable,
+    observableObject,
     insertCss,
     emptyTemplate,
     computedAll,
@@ -54,7 +56,13 @@ function transform(module) {
 
                 const vm = new constructor(opts, componentInfo);
 
-                props && Object.assign(vm, observable(opts, props));
+                if (props) {
+                    let validOpts = valid(opts, props);
+                    linkObjectObservable(validOpts, props);
+                    observableObject(validOpts);
+                    extend(vm, validOpts);
+                }
+
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
