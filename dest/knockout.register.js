@@ -43,7 +43,7 @@ function isNode(target, name) {
     return nodeName === name;
 }
 
-var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
+var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
 
 // no-ops function
 function noop() {}
@@ -93,9 +93,11 @@ var isRegExp = isType('RegExp');
 function toPrimitive(value) {
     if (typeof value !== 'string') {
         return value;
-    } else if (value === 'True') {
+    } else if (value === '') {
+        return '';
+    } else if (value === 'True' || value === 'true') {
         return true;
-    } else if (value === 'False') {
+    } else if (value === 'False' || value === 'false') {
         return false;
     }
 

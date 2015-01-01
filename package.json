@@ -1,6 +1,6 @@
 {
   "name": "knockout.register",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "Enhanced knockout component module",
   "main": "dest/knockout.register.js",
   "scripts": {
