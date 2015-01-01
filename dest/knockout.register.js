@@ -35,8 +35,8 @@ function isType(name) {
 var isString = isType('String');
 var isNumber = isType('Number');
 var isBoolean = isType('Boolean');
-var isObject = isType('Object');
-var isArray = isType('Array');
+var isObject$1 = isType('Object');
+var isArray$1 = isType('Array');
 var isFunction = isType('Function');
 var isDate = isType('Date');
 var isRegExp = isType('RegExp');
@@ -419,7 +419,7 @@ function warn(msg, extra) {
 //
 // @param {Array|String|Node} tpl
 function pluckNodes(tpl) {
-    if (isArray(tpl)) {
+    if (isArray$1(tpl)) {
         return tpl;
     }
 
@@ -626,66 +626,6 @@ function pluck$$1(node) {
     return result;
 }
 
-function isBasic(value) {
-    return isString(value) || isNumber(value) || isBoolean(value);
-}
-
-// Observable array and object items
-//
-// @param {Array} data
-function observableArray$$1(data) {
-    each(data, function (item, i) {
-        if (ko.isObservable(item)) {
-            return true;
-        }
-
-        if (isObject(item)) {
-            data[i] = observableObject$$1(item);
-        } else if (isArray(item)) {
-            data[i] = observableArray$$1(item);
-        }
-    });
-
-    return ko.observableArray(data);
-}
-
-// Observable object properties
-//
-// @param {Object} data
-function observableObject$$1(data) {
-    eachDict(data, function (propKey, propValue) {
-        if (ko.isObservable(propValue)) {
-            return true;
-        }
-
-        if (isObject(propValue)) {
-            data[propKey] = observableObject$$1(propValue);
-        } else if (isArray(propValue)) {
-            data[propKey] = observableArray$$1(propValue);
-        } else if (isBasic(propValue)) {
-            data[propKey] = ko.observable(propValue);
-        } else {
-            data[propKey] = propValue;
-        }
-    });
-
-    return data;
-}
-
-// Link array observable with validators
-//
-// @param {Function} observable
-// @param {Object|Function} validator
-
-
-// Link object observable with validators
-//
-// @param {Object} data
-// @param {Object} validators
-function linkObjectObservable$$1(data, validators) {
-    return;
-}
-
 // Run validator on given prop
 //
 // @param {String} propName
@@ -694,7 +634,7 @@ function linkObjectObservable$$1(data, validators) {
 // @param {Object|Function} validator
 // @return {Boolean}
 function validProp$$1(propName, propValue, data, validator) {
-    var isWrapped = isObject(validator);
+    var isWrapped = isObject$1(validator);
     var isObservable = ko.isObservable(propValue);
     var required = isWrapped ? validator.required : false;
     var defaultValue = isWrapped ? validator.default : undefined;
@@ -734,11 +674,11 @@ function validObject$$1(propName, propValue, data, validators) {
         var validator = validators[subPropName];
         var subPropValue = computedPropValue ? computedPropValue[subPropName] : undefined;
 
-        if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
+        if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
             return validProp$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+        } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
             return validObject$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isArray(validator) || isArray(validator.type)) {
+        } else if (isArray$1(validator) || isArray$1(validator.type)) {
             var subValidator = validator.type ? validator.type : validator;
             var len = subValidator.length;
 
@@ -790,11 +730,11 @@ function validArray$$1(propName, propValue, data, validator) {
     var computedPropValue = ko.unwrap(propValue);
     var validMethod = void 0;
 
-    if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
+    if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
         validMethod = validProp$$1;
-    } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+    } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
         validMethod = validObject$$1;
-    } else if (isArray(validator) || isArray(validator.type)) {
+    } else if (isArray$1(validator) || isArray$1(validator.type)) {
         if (validator.length > 1) {
             validMethod = validWithin$$1;
         } else {
@@ -815,23 +755,152 @@ function validArray$$1(propName, propValue, data, validator) {
     return result;
 }
 
-// Create view model according to validators
+// Run validators
 //
 // @param {Object} data
 // @param {Object} validators
-function observable$$1(data, validators) {
-    if (!isObject(data)) {
+function valid$$1(data, validators) {
+    if (!isObject$1(data) || data === null) {
         warn('Invalid props: ' + data);
         return null;
     } else {
+        var validData = {};
+
+        validObject$$1('data', data, validData, validators);
+
+        return validData['data'];
+    }
+}
+
+var linkedLabel$$1 = '__hasLinked';
+var unlinkMethodLabel$$1 = '__unlink';
+
+function isArrayObservable(target) {
+    return ko.isObservable(target) && isFunction(target.push);
+}
+
+// Link array observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+function linkArrayObservable$$1(observable, validator) {
+    var _arguments = arguments;
+
+    if (!isArrayObservable(observable) || observable[linkedLabel$$1]) {
+        return;
+    }
+
+    var originPush = observable.push;
+    var originUnshift = observable.unshift;
+    var originSplice = observable.splice;
+
+    observable[unlinkMethodLabel$$1] = function () {
+        observable.push = originPush;
+        observable.unshift = originUnshift;
+        observable.splice = originSplice;
+        delete observable[linkedLabel$$1];
+        delete observable[unlinkMethodLabel$$1];
+    };
+
+    observable.push = function (item) {
         var validResult = {};
 
-        validObject$$1('data', data, validResult, validators);
-        linkObjectObservable$$1(validResult);
-        observableObject$$1(validResult, validators);
+        if (validArray$$1('push', [item], validResult, validator)) {
+            originPush.call(observable, validResult['push'][0]);
+        }
+    };
 
-        return validResult['data'];
-    }
+    observable.unshift = function (item) {
+        var validResult = {};
+
+        if (validArray$$1('unshift', [item], validResult, validator)) {
+            originUnshift.call(observable, validResult['unshift'][0]);
+        }
+    };
+
+    observable.splice = function () {
+        if (_arguments.length < 3) {
+            return;
+        }
+
+        var args = [_arguments[0], _arguments[1]];
+        var result = every(toArray(_arguments, 2), function (item, i) {
+            var subValidResult = {};
+            var subResult = validArray$$1('splice', [item], subValidResult, validator);
+
+            if (subResult) {
+                args.push(subValidResult['splice'][0]);
+            }
+
+            return subResult;
+        });
+
+        if (result) {
+            originSplice.apply(observable, args);
+        }
+    };
+
+    observable[linkedLabel$$1] = true;
+}
+
+// Link object observable with validators
+//
+// @param {Object} data
+// @param {Object} validators
+function linkObjectObservable$$1(data, validators) {
+    eachDict(validators, function (propName, validator) {
+        if (isArray(validator) && validator.length === 1) {
+            linkArrayObservable$$1(data[propName], validator[0]);
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+            linkObjectObservable$$1(data[propName], validator);
+        }
+    });
+}
+
+function isBasic(value) {
+    return isString(value) || isNumber(value) || isBoolean(value);
+}
+
+// Observable array and object items
+//
+// @param {Array} data
+function observableArray$$1(data) {
+    each(data, function (item, i) {
+        if (ko.isObservable(item)) {
+            return true;
+        }
+
+        if (isObject$1(item)) {
+            data[i] = observableObject$$1(item);
+        } else if (isArray$1(item)) {
+            data[i] = observableArray$$1(item);
+        }
+    });
+
+    return ko.observableArray(data);
+}
+
+// Observable object properties
+//
+// @param {Object} data
+function observableObject$$1(data) {
+    eachDict(data, function (propKey, propValue) {
+        if (ko.isObservable(propValue)) {
+            return true;
+        }
+
+        if (isObject$1(propValue)) {
+            data[propKey] = observableObject$$1(propValue);
+        } else if (isArray$1(propValue)) {
+            data[propKey] = observableArray$$1(propValue);
+        } else if (isBasic(propValue)) {
+            data[propKey] = ko.observable(propValue);
+        } else {
+            data[propKey] = propValue;
+        }
+    });
+
+    return data;
 }
 
 var slotLoader = {
@@ -856,7 +925,7 @@ var slotLoader = {
             return callback(null);
         }
 
-        if (vmConfig && isObject(vmConfig)) {
+        if (vmConfig && isObject$1(vmConfig)) {
             if (!vmConfig.createViewModel) {
                 return callback(null);
             }
@@ -894,7 +963,7 @@ var lifeComponentLoader = {
     loadViewModel: function loadViewModel(name, vmConfig, callback) {
         var originalCreateViewModel = null;
 
-        if (vmConfig && isObject(vmConfig) && isFunction(vmConfig.createViewModel)) {
+        if (vmConfig && isObject$1(vmConfig) && isFunction(vmConfig.createViewModel)) {
             originalCreateViewModel = vmConfig.createViewModel;
             vmConfig.createViewModel = function (params, componentInfo) {
                 var vm = new originalCreateViewModel(params, componentInfo);
@@ -940,8 +1009,8 @@ var validators = {
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
-    Object: isObject,
-    Array: isArray,
+    Object: isObject$1,
+    Array: isArray$1,
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
@@ -1038,7 +1107,13 @@ function transform(module) {
 
                 var vm = new constructor(opts, componentInfo);
 
-                props && Object.assign(vm, observable$$1(opts, props));
+                if (props) {
+                    var validOpts = valid$$1(opts, props);
+                    linkObjectObservable$$1(validOpts, props);
+                    observableObject$$1(validOpts);
+                    extend(vm, validOpts);
+                }
+
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
