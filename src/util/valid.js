@@ -8,6 +8,9 @@ import {
     warn,
     error
 } from './index';
+import {
+    defineValidatorName
+} from '../core/validator';
 
 // Run validator on given prop
 //
@@ -23,7 +26,7 @@ export function validProp(propName, propValue, data, validator) {
     const defaultValue = isWrapped ? validator.default : undefined;
 
     let computedPropValue = ko.unwrap(propValue);
-    validator = isWrapped ? validator.type : validator;
+    let computedValidator = isWrapped ? validator.type : validator;
 
     if (!isObservable) {
         propValue = propValue === undefined ? defaultValue : propValue;
@@ -31,16 +34,17 @@ export function validProp(propName, propValue, data, validator) {
     }
 
     const isUndefined = computedPropValue === undefined;
+    const validatorName = defineValidatorName(computedValidator);
 
     // required
     if (isUndefined && required) {
-        error(`Invalid prop: Missing required prop: ${propName}`, data);
+        error(`Invalid prop: Missing required prop: ${propName}`);
         return false;
-    } else if (!isUndefined && !validator(computedPropValue)) {
-        error(`Invalid prop: key: ${propName}, propValue: ${computedPropValue}`, data);
+    } else if (!isUndefined && !computedValidator(computedPropValue)) {
+        error(`Invalid prop: key: ${propName}, expect: ${validatorName}, actual: ${computedPropValue}`);
         return false;
     } else if (isUndefined) {
-        warn(`Invalid prop: key: ${propName}, propValue: ${computedPropValue}`, data);
+        warn(`Need prop: key: ${propName}, expect: ${validatorName}, actual: ${computedPropValue}`);
         data[propName] = undefined;
         return true;
     } else {
@@ -100,7 +104,7 @@ export function validObject(propName, propValue, data, validators) {
                 );
             }
         } else {
-            error(`Invalid validator: ${validator}`, resultObject);
+            error(`Invalid validator: ${validator}`);
             return false;
         }
     });
@@ -152,7 +156,7 @@ export function validArray(propName, propValue, data, validator) {
             validMethod = validArray;
         }
     } else {
-        error(`Invalid validator: ${validator}`, data);
+        error(`Invalid validator: ${validator}`);
         return false;
     }
 

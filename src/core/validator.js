@@ -2,6 +2,7 @@ import {
     some,
     noop,
     toArray,
+    each,
     eachDict,
     isString,
     isNumber,
@@ -33,7 +34,7 @@ function isRequired(validator, defaultValue) {
 const isNode = is(Node);
 const isElement = is(Element);
 
-const validators = {
+ko.types = ko.types || {
 
     // basic type validators
     String: isString,
@@ -66,12 +67,16 @@ const validators = {
     },
     oneOf() {
         const enums = toArray(arguments);
-
-        return (actual) => {
+        const validator = (actual) => {
             return some(enums, (expected) => {
                 return actual === expected;
             });
         };
+
+        // for define validator name
+        validator.__type_name = 'ko.types.oneOf';
+
+        return validator;
     },
 
     // combination type validators
@@ -103,4 +108,43 @@ const validators = {
     }
 };
 
-ko.types = ko.types || validators;
+let buildInValidators = Object.keys(ko.types);
+
+// Get validator
+//
+// @param {Any} validator
+// @return {ANy}
+export function defineValidator(validator) {
+    return (isObject(validator) && hasOwn(validator, 'type'))
+        ? validator.type
+        : validator;
+}
+
+// Get validator name
+//
+// @param {Any} validator
+// @return {String}
+export function defineValidatorName(validator) {
+    let name = '';
+    let computedValidator = defineValidator(validator);
+
+    if (isArray(computedValidator)) {
+        name = computedValidator.length === 1 ? 'arrayOf' : 'oneOfType';
+    } else if (isObject(computedValidator)) {
+        name = 'shape';
+    } else {
+        each(buildInValidators, (key) => {
+            if (validator === ko.types[key]) {
+                name = key;
+                return false;
+            }
+        });
+    }
+
+    return name
+        ? `ko.types.${name}`
+        : (isFunction(validator)
+            ? (validator.__type_name || validator.name || 'custom')
+            : validator
+        );
+};
