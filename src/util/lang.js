@@ -65,12 +65,12 @@ export function toPrimitive(value) {
 //
 // @param {Object} target
 // @return {Array}
-export function toArray(target) {
-    let len = target.length;
-    let result = [];
+export function toArray(target, start = 0) {
+    let i = target.length - start;
+    let result = new Array(i);
 
-    while (len-- > 0) {
-        result[len] = target[len];
+    while (i--) {
+      result[i] = target[i + start];
     }
 
     return result;
@@ -144,4 +144,24 @@ export function eachDict(dict, iterator) {
             return;
         }
     });
+};
+
+// extend dict
+//
+// @param {Obejct} target
+// @param {Obejct} dict
+// @return {Object} target
+export function extend(target, dict) {
+    if (!dict) {
+        return target;
+    }
+
+    const keys = Object.keys(dict);
+    let i = keys.length;
+
+    while (i--) {
+        target[keys[i]] = dict[keys[i]];
+    }
+
+    return target;
 };

@@ -1,7 +1,8 @@
-import pluck from './pluck';
 import {
     noop,
     mixin,
+    pluck,
+    extend,
     observable,
     insertCss,
     emptyTemplate,
@@ -19,6 +20,11 @@ const modulePolyfill = {
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
 function transform(module) {
+    let finalModule = { constructor: function() {} };
+
+    extend(finalModule, modulePolyfill);
+    extend(finalModule, module);
+
     const {
         name,
         constructor,
@@ -30,24 +36,22 @@ function transform(module) {
         pureComputed,
         style,
         template
-    } = Object.assign({
-        constructor: function() {}
-    }, modulePolyfill, module);
+    } = finalModule;
 
     insertCss(module.style);
-    Object.assign(constructor.prototype, methods);
+    extend(constructor.prototype, methods);
 
     return {
         viewModel: {
             createViewModel(params, componentInfo) {
                 componentInfo.name = name;
 
-                const opts = Object.assign(
-                    {},
-                    defaults,
-                    ko.toJS(params),
-                    pluck(componentInfo.element)
-                );
+                let opts = {};
+
+                extend(opts, defaults);
+                extend(opts, ko.toJS(params));
+                extend(opts, pluck(componentInfo.element));
+
                 const vm = new constructor(opts, componentInfo);
 
                 props && Object.assign(vm, observable(opts, props));

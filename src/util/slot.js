@@ -1,15 +1,9 @@
 import {
     each,
+    isNode,
     isArray,
     isString
 } from './';
-
-function isNode(target, name) {
-    const nodeName = (target && target.nodeName) ?
-        target.nodeName.toLowerCase() : '';
-
-    return nodeName === name;
-}
 
 // Pluck dom node from given template
 //

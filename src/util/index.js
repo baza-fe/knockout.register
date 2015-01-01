@@ -5,4 +5,6 @@ export * from './plugin';
 export * from './query';
 export * from './debug';
 export * from './slot';
+export * from './dom';
+export * from './pluck';
 export * from './observable';
