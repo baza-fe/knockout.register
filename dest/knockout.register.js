@@ -70,11 +70,13 @@ function toPrimitive(value) {
 // @param {Object} target
 // @return {Array}
 function toArray(target) {
-    var len = target.length;
-    var result = [];
+    var start = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 
-    while (len-- > 0) {
-        result[len] = target[len];
+    var i = target.length - start;
+    var result = new Array(i);
+
+    while (i--) {
+        result[i] = target[i + start];
     }
 
     return result;
@@ -149,6 +151,26 @@ function eachDict(dict, iterator) {
             return;
         }
     });
+}
+
+// extend dict
+//
+// @param {Obejct} target
+// @param {Obejct} dict
+// @return {Object} target
+function extend(target, dict) {
+    if (!dict) {
+        return target;
+    }
+
+    var keys = Object.keys(dict);
+    var i = keys.length;
+
+    while (i--) {
+        target[keys[i]] = dict[keys[i]];
+    }
+
+    return target;
 }
 
 function apply(selector, contextNode) {
@@ -393,12 +415,6 @@ function warn(msg, extra) {
      hasConsole && console.error(msg, extra);
 }
 
-function isNode(target, name) {
-    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
-
-    return nodeName === name;
-}
-
 // Pluck dom node from given template
 //
 // @param {Array|String|Node} tpl
@@ -508,6 +524,106 @@ function slot$$1(srcTpl, destTpl) {
     });
 
     return srcNodes;
+}
+
+// Check dom node by name
+//
+// @param {Node} target
+// @param {String} name
+// @return {Boolean}
+function isNode(target, name) {
+    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
+
+    return nodeName === name;
+}
+
+var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
+var observableAttrNameRE = /^k-([\w\-]+)/i;
+var eventAttrNameRE = /^on-([\w\-]+)/i;
+var bindingProvider = new ko.bindingProvider();
+
+function pluckObservableBindingString(nodeName, nodeValue) {
+    var result = nodeName.match(observableAttrNameRE);
+
+    return result ? normalize(result[1]) + ':' + nodeValue : '';
+}
+
+function pluckEventBindingString(nodeName, nodeValue) {
+    var result = nodeName.match(eventAttrNameRE);
+
+    return result ? normalize(result[0]) + ':' + nodeValue : '';
+}
+
+function pluckObservableParams(bindingContext, bindingString) {
+    return bindingProvider.parseBindingsString(bindingString, bindingContext);
+}
+
+function pluckEventParams(bindingContext, bindingString) {
+    var i = 0,
+        handlerParams = void 0,
+        bindingError = void 0;
+    var bindingParents = ko.utils.makeArray(bindingContext.$parents);
+
+    if (bindingParents.indexOf(bindingContext.$data) < 0) {
+        bindingParents.unshift(bindingContext.$data);
+    }
+
+    bindingContext = { $data: null };
+
+    while (bindingContext.$data = bindingParents[i]) {
+        i += 1;
+
+        try {
+            handlerParams = bindingProvider.parseBindingsString(bindingString, bindingContext);
+            bindingError = null;
+            break;
+        } catch (err) {
+            bindingError = err;
+        }
+    }
+
+    if (bindingError) {
+        throw bindingError;
+    }
+
+    return handlerParams;
+}
+
+function pluck$$1(node) {
+    var bindingContext = null;
+    var observableBindingStringList = [];
+    var eventBindingStringList = [];
+
+    var result = ko.utils.makeArray(node.attributes).reduce(function (params, node) {
+        var nodeName = node.nodeName;
+        var nodeValue = node.nodeValue;
+
+        if (invalidAttrNameRE.test(nodeName)) {
+            return params;
+        }
+
+        if (observableAttrNameRE.test(nodeName)) {
+            observableBindingStringList.push(pluckObservableBindingString(nodeName, nodeValue));
+        } else if (eventAttrNameRE.test(nodeName)) {
+            eventBindingStringList.push(pluckEventBindingString(nodeName, nodeValue));
+        } else {
+            params[normalize(nodeName)] = toPrimitive(nodeValue);
+        }
+
+        return params;
+    }, {});
+
+    var eventBindingString = '{' + eventBindingStringList.join(',') + '}';
+    var observableBindingString = '{' + observableBindingStringList.join(',') + '}';
+
+    if (eventBindingString || observableBindingString) {
+        bindingContext = ko.contextFor(node);
+    }
+
+    extend(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString));
+    extend(result, observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
+
+    return result;
 }
 
 function isBasic(value) {
@@ -879,169 +995,6 @@ var validators = {
 
 ko.types = ko.types || validators;
 
-var _extends = Object.assign || function (target) {
-  for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i];
-
-    for (var key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        target[key] = source[key];
-      }
-    }
-  }
-
-  return target;
-};
-
-var get = function get(object, property, receiver) {
-  if (object === null) object = Function.prototype;
-  var desc = Object.getOwnPropertyDescriptor(object, property);
-
-  if (desc === undefined) {
-    var parent = Object.getPrototypeOf(object);
-
-    if (parent === null) {
-      return undefined;
-    } else {
-      return get(parent, property, receiver);
-    }
-  } else if ("value" in desc) {
-    return desc.value;
-  } else {
-    var getter = desc.get;
-
-    if (getter === undefined) {
-      return undefined;
-    }
-
-    return getter.call(receiver);
-  }
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-var set = function set(object, property, value, receiver) {
-  var desc = Object.getOwnPropertyDescriptor(object, property);
-
-  if (desc === undefined) {
-    var parent = Object.getPrototypeOf(object);
-
-    if (parent !== null) {
-      set(parent, property, value, receiver);
-    }
-  } else if ("value" in desc && desc.writable) {
-    desc.value = value;
-  } else {
-    var setter = desc.set;
-
-    if (setter !== undefined) {
-      setter.call(receiver, value);
-    }
-  }
-
-  return value;
-};
-
-var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
-var observableAttrNameRE = /^k-([\w\-]+)/i;
-var eventAttrNameRE = /^on-([\w\-]+)/i;
-var bindingProvider = new ko.bindingProvider();
-
-function pluckObservableBindingString(nodeName, nodeValue) {
-    var result = nodeName.match(observableAttrNameRE);
-
-    return result ? normalize(result[1]) + ':' + nodeValue : '';
-}
-
-function pluckEventBindingString(nodeName, nodeValue) {
-    var result = nodeName.match(eventAttrNameRE);
-
-    return result ? normalize(result[0]) + ':' + nodeValue : '';
-}
-
-function pluckObservableParams(bindingContext, bindingString) {
-    return bindingProvider.parseBindingsString(bindingString, bindingContext);
-}
-
-function pluckEventParams(bindingContext, bindingString) {
-    var i = 0,
-        handlerParams = void 0,
-        bindingError = void 0;
-    var bindingParents = ko.utils.makeArray(bindingContext.$parents);
-
-    if (bindingParents.indexOf(bindingContext.$data) < 0) {
-        bindingParents.unshift(bindingContext.$data);
-    }
-
-    bindingContext = { $data: null };
-
-    while (bindingContext.$data = bindingParents[i]) {
-        i += 1;
-
-        try {
-            handlerParams = bindingProvider.parseBindingsString(bindingString, bindingContext);
-            bindingError = null;
-            break;
-        } catch (err) {
-            bindingError = err;
-        }
-    }
-
-    if (bindingError) {
-        throw bindingError;
-    }
-
-    return handlerParams;
-}
-
-function pluck(node) {
-    var bindingContext = null;
-    var observableBindingStringList = [];
-    var eventBindingStringList = [];
-
-    var result = ko.utils.makeArray(node.attributes).reduce(function (params, node) {
-        var nodeName = node.nodeName;
-        var nodeValue = node.nodeValue;
-
-        if (invalidAttrNameRE.test(nodeName)) {
-            return params;
-        }
-
-        if (observableAttrNameRE.test(nodeName)) {
-            observableBindingStringList.push(pluckObservableBindingString(nodeName, nodeValue));
-        } else if (eventAttrNameRE.test(nodeName)) {
-            eventBindingStringList.push(pluckEventBindingString(nodeName, nodeValue));
-        } else {
-            params[normalize(nodeName)] = toPrimitive(nodeValue);
-        }
-
-        return params;
-    }, {});
-
-    var eventBindingString = '{' + eventBindingStringList.join(',') + '}';
-    var observableBindingString = '{' + observableBindingStringList.join(',') + '}';
-
-    if (eventBindingString || observableBindingString) {
-        bindingContext = ko.contextFor(node);
-    }
-
-    return _extends(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString), observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
-}
-
 var modulePolyfill = {
     defaults: {},
     template: emptyTemplate
@@ -1052,40 +1005,46 @@ var modulePolyfill = {
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
 function transform(module) {
-    var _Object$assign = _extends({
-        constructor: function constructor() {}
-    }, modulePolyfill, module);
+    var finalModule = { constructor: function constructor() {} };
 
-    var name = _Object$assign.name;
-    var constructor = _Object$assign.constructor;
-    var defaults$$1 = _Object$assign.defaults;
-    var props = _Object$assign.props;
-    var mixins = _Object$assign.mixins;
-    var methods = _Object$assign.methods;
-    var computed = _Object$assign.computed;
-    var pureComputed = _Object$assign.pureComputed;
-    var style = _Object$assign.style;
-    var template = _Object$assign.template;
+    extend(finalModule, modulePolyfill);
+    extend(finalModule, module);
+
+    var name = finalModule.name;
+    var constructor = finalModule.constructor;
+    var defaults = finalModule.defaults;
+    var props = finalModule.props;
+    var mixins = finalModule.mixins;
+    var methods = finalModule.methods;
+    var computed = finalModule.computed;
+    var pureComputed = finalModule.pureComputed;
+    var style = finalModule.style;
+    var template = finalModule.template;
 
 
     insertCss(module.style);
-    _extends(constructor.prototype, methods);
+    extend(constructor.prototype, methods);
 
     return {
         viewModel: {
             createViewModel: function createViewModel(params, componentInfo) {
                 componentInfo.name = name;
 
-                var opts = _extends({}, defaults$$1, ko.toJS(params), pluck(componentInfo.element));
+                var opts = {};
+
+                extend(opts, defaults);
+                extend(opts, ko.toJS(params));
+                extend(opts, pluck$$1(componentInfo.element));
+
                 var vm = new constructor(opts, componentInfo);
 
-                props && _extends(vm, observable$$1(opts, props));
+                props && Object.assign(vm, observable$$1(opts, props));
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
 
                 vm.$opts = opts;
-                vm.$defaults = defaults$$1;
+                vm.$defaults = defaults;
                 vm.$info = vm.componentInfo = componentInfo;
 
                 delete vm.$opts['$raw'];
