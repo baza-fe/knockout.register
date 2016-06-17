@@ -1,0 +1,46 @@
+{
+  "name": "knockout.register",
+  "version": "0.0.2",
+  "description": "Enhanced knockout component module",
+  "main": "index.js",
+  "scripts": {
+    "prepublish": "npm run test",
+    "build": "node build/build.js",
+    "pretest": "npm run build",
+    "test": "karma start build/karma.config.js"
+  },
+  "keywords": [
+    "knockout"
+  ],
+  "author": "BinRui.Guan <differui@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-plugin-transform-object-assign": "^6.8.0",
+    "babel-preset-es2015-rollup": "^1.1.1",
+    "core-js": "^2.4.0",
+    "insert-css": "^0.2.0",
+    "jasmine-core": "^2.4.1",
+    "karma": "^0.13.22",
+    "karma-chrome-launcher": "^1.0.1",
+    "karma-firefox-launcher": "^1.0.0",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-jasmine": "^1.0.2",
+    "karma-phantomjs-launcher": "^1.0.0",
+    "karma-rollup-preprocessor": "^2.0.2",
+    "karma-safari-launcher": "^1.0.0",
+    "phantomjs-prebuilt": "^2.1.7",
+    "robust-mixin": "0.0.5",
+    "rollup": "^0.31.2",
+    "rollup-plugin-babel": "^2.5.1",
+    "rollup-plugin-commonjs": "^3.0.0",
+    "rollup-plugin-node-resolve": "^1.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/differui/knockout.register.git"
+  },
+  "bugs": {
+    "url": "https://github.com/differui/knockout.register/issues"
+  },
+  "homepage": "https://github.com/differui/knockout.register#readme"
+}
