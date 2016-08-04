@@ -1,7 +1,7 @@
 knockout.register
 =====
 
-In order to accelerate development with knockout components.The original knockout component module is cumbersome.**knockout.register** helps register component in more simple and more powerful way.
+In order to accelerate the speed of developing with knockout components.**knockout.register** helps to register component in a simpler and more powerful way.
 
 ## Usage
 
@@ -20,9 +20,9 @@ npm install knockout.register --save
 
 ### Native Component Module
 
-**knockout.register** call knockout original component module as **Native Component Module**.
+**knockout.register** named knockout original component module as **Native Component Module**.
 
-Cite knockout doc:
+Cite from knockout documentation:
 
 ```js
 ko.components.register('my-component', {
@@ -46,11 +46,11 @@ ko.components.register('my-component', {
 
 ## Standard Component Module
 
-**knockout.register** create own component module and call it **Stand Component Module**.It's more simple and powerful than **NCM**.
+**knockout.register** creates a new component module and named it as **Stand Component Module**.
 
-Here is a brief list what **SCM** can do but **NCM** can not:
+Below is a list of what **knockout.register** can do:
 
-+ register with component css
++ register with css
 + register with defaults params
 + register with computed and pureComputed params
 + register with mixins
@@ -58,7 +58,7 @@ Here is a brief list what **SCM** can do but **NCM** can not:
 + helpful lifecycle methods
 + node attributes as params
 
-Here is a sample:
+Below is an example:
 
 ```js
 import eventMixin from './mixin/event';
@@ -81,7 +81,7 @@ const Btn = {
     methods: {
         onClick(vm, ev) {
 
-            // trigger mixin from event mixin
+            // trigger mix from eventMixin
             this.trigger('click', vm);
         }
     },
