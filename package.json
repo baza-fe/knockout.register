@@ -4,7 +4,6 @@
   "description": "Enhanced knockout component module",
   "main": "index.js",
   "scripts": {
-    "prepublish": "npm run test",
     "build": "node build/build.js",
     "pretest": "npm run build",
     "test": "karma start build/karma.config.js"
