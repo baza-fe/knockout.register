@@ -63,6 +63,10 @@ ko.components.getElementById = getElementById;
 ko.components.getElementsByTagName = getElementsByTagName;
 ko.components.getElementsByClassName = getElementsByClassName;
 
+function interopDefault(ex) {
+	return ex && typeof ex === 'object' && 'default' in ex ? ex['default'] : ex;
+}
+
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -92,7 +96,7 @@ module.exports = function (css, options) {
 };
 });
 
-var insert = (index && typeof index === 'object' && 'default' in index ? index['default'] : index);
+var insert = interopDefault(index);
 
 var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 var utils = ko.utils;
