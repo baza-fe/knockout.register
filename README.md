@@ -46,7 +46,7 @@ ko.components.register('my-component', {
 
 ## Standard Component Module
 
-**knockout.register** creates a new component module and named it as **Stand Component Module**.
+**knockout.register** creates a new component module and named it as **Standard Component Module**.
 
 Below is a list of what **knockout.register** can do:
 
