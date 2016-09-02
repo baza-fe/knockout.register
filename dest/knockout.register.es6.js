@@ -122,6 +122,11 @@ function isFunction(target) {
     return typeof target === 'function';
 };
 
+// string type checker
+function isString(target) {
+    return typeof target === 'string';
+};
+
 // insert dom stylesheet
 function insertCss() {
     return insert.apply(null, arguments);
@@ -217,6 +222,28 @@ function mixin(dest, opts, mixins) {
     delete dest.postMix;
 
     return dest;
+};
+
+function apply(selector, contextNode) {
+    if (isString(contextNode)) {
+        contextNode = document.querySelector(contextNode);
+    }
+
+    var nodes = (contextNode || document).querySelectorAll(selector);
+
+    ko.utils.arrayForEach(nodes, function (node) {
+        var bindingStatements = null;
+        var bindingAttributes = node.getAttribute('data-bind') || '';
+
+        if (bindingAttributes.indexOf(/\bskip\b\s*:/g) > -1) {
+            return;
+        }
+
+        ko.applyBindings(null, node);
+        bindingStatements = bindingAttributes ? bindingAttributes.split(',') : [];
+        bindingStatements.push('skip: true');
+        node.setAttribute('data-bind', bindingStatements.join(','));
+    });
 };
 
 // create computed observalbes on context
@@ -421,3 +448,6 @@ ko.components.register = register;
 // extend knockout utils
 ko.utils.mixin = ko.utils.mixin || mixin;
 ko.utils.insertCss = ko.utils.insertCss || insertCss;
+
+// extend knockuot components
+ko.components.apply = ko.components.apply || apply;
