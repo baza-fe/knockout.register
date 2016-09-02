@@ -24,6 +24,11 @@ export function isFunction(target) {
     return typeof target === 'function';
 };
 
+// string type checker
+export function isString(target) {
+    return typeof target === 'string';
+};
+
 // insert dom stylesheet
 export function insertCss() {
     return insert.apply(null, arguments);
@@ -119,4 +124,26 @@ export function mixin(dest, opts, mixins) {
     delete dest.postMix;
 
     return dest;
+};
+
+export function apply(selector, contextNode) {
+    if (isString(contextNode)) {
+        contextNode = document.querySelector(contextNode);
+    }
+
+    const nodes = (contextNode || document).querySelectorAll(selector);
+
+    ko.utils.arrayForEach(nodes, (node) => {
+        let bindingStatements = null;
+        const bindingAttributes = node.getAttribute('data-bind') || '';
+
+        if (bindingAttributes.indexOf(/\bskip\b\s*:/g) > -1) {
+            return;
+        }
+
+        ko.applyBindings(null, node);
+        bindingStatements = bindingAttributes ? bindingAttributes.split(',') : [];
+        bindingStatements.push('skip: true');
+        node.setAttribute('data-bind', bindingStatements.join(','));
+    });
 };
