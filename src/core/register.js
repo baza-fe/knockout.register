@@ -1,4 +1,4 @@
-import { exist, throwError } from '../util/';
+import { exist, throwError, isString } from '../util/';
 import transform from './transform';
 
 // Register transition component module
@@ -11,7 +11,7 @@ function register(module) {
     }
 
     // native component module
-    if (typeof module === 'string') {
+    if (isString(module)) {
         return ko.components._register(arguments[0], arguments[1]);
     }
 
