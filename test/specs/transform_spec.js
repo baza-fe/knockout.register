@@ -1,7 +1,7 @@
 import eventMixin from '../samples/mixins/event';
 import stateMixin from '../samples/mixins/state';
-import transform from '../../src/transform';
-import { noop, emptyTemplate } from '../../src/util';
+import transform from '../../src/core/transform';
+import { noop, emptyTemplate } from '../../src/util/';
 
 const Component = {
     name: 'component',
@@ -43,6 +43,16 @@ describe('transform', () => {
 
         expect(prototype.foo).toBe(methods.foo);
         expect(prototype.bar).toBe(methods.bar);
+    });
+
+    it('should define lifecycle methods', () => {
+        const prototype = Component.constructor.prototype;
+
+        transform(Component);
+
+        expect(prototype.ref).toBeDefined();
+        expect(prototype.refs).toBeDefined();
+        expect(prototype.ready).toBeDefined();
     });
 
     it('should insert css into dom', () => {

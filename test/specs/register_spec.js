@@ -1,4 +1,4 @@
-import '../../src/register';
+import '../../src/core/register';
 
 describe('register', () => {
     const module = {

@@ -1,4 +1,4 @@
-import { mixin } from '../../src/util';
+import { mixin } from '../../src/util/';
 
 describe('mixin', () => {
     const parent = Object.create({});

@@ -1,4 +1,4 @@
-import '../../src/index';
+import '../../src/';
 import eventMixin from '../samples/mixins/event';
 import stateMixin from '../samples/mixins/state';
 import Avatar from '../samples/components/avatar';
