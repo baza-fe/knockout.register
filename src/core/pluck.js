@@ -1,4 +1,4 @@
-import { normalize, toPrimitive } from './util';
+import { normalize, toPrimitive } from '../util/';
 
 const invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
 const observableAttrNameRE = /^k-([\w\-]+)/i;

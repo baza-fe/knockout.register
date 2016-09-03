@@ -1,3 +1,1 @@
-import './component';
-import './register';
-import './extend';
+export * from './core/register';

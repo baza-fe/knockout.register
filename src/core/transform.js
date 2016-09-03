@@ -1,6 +1,14 @@
-import { noop, mixin, insertCss, emptyTemplate } from './util';
-import { computedAll, pureComputedAll } from './computed';
 import pluck from './pluck';
+import {
+    ref,
+    refs,
+    noop,
+    mixin,
+    insertCss,
+    emptyTemplate,
+    computedAll,
+    pureComputedAll
+} from '../util/';
 
 const modulePolyfill = {
     constructor: noop,
@@ -20,18 +28,23 @@ function transform(module) {
         methods,
         computed,
         pureComputed,
-        style, template
+        style,
+        template
     } = Object.assign({}, modulePolyfill, module);
 
     insertCss(module.style);
-    methods && Object.assign(constructor.prototype, methods);
+    methods && Object.assign(constructor.prototype, {
+        ref,
+        refs,
+        ready: noop
+    }, methods);
 
     return {
         viewModel: {
             createViewModel(params, componentInfo) {
                 const opts = Object.assign(
-                    ko.toJS(params),
                     defaults,
+                    ko.toJS(params),
                     pluck(componentInfo.element)
                 );
                 const vm = new constructor(opts, componentInfo);
@@ -51,7 +64,7 @@ function transform(module) {
             }
         },
         synchronous: true,
-        template: template
+        template
     };
 }
 

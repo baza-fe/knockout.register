@@ -1,4 +1,4 @@
-import { exist, throwError } from './util';
+import { exist, throwError } from '../util/';
 import transform from './transform';
 
 // Register transition component module
