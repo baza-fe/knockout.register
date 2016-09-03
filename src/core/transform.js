@@ -22,6 +22,7 @@ const modulePolyfill = {
 // @return {Object} Native component module
 function transform(module) {
     const {
+        name,
         constructor,
         defaults,
         mixins,
@@ -42,6 +43,8 @@ function transform(module) {
     return {
         viewModel: {
             createViewModel(params, componentInfo) {
+                componentInfo.name = name;
+
                 const opts = Object.assign(
                     defaults,
                     ko.toJS(params),
