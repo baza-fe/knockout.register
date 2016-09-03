@@ -46,6 +46,7 @@ function transform(module) {
                 componentInfo.name = name;
 
                 const opts = Object.assign(
+                    {},
                     defaults,
                     ko.toJS(params),
                     pluck(componentInfo.element)
