@@ -60,7 +60,7 @@ function pluck(node) {
         const nodeValue = node.nodeValue;
 
         if (invalidAttrNameRE.test(nodeName)) {
-            return;
+            return params;
         }
 
         if (observableAttrNameRE.test(nodeName)) {
