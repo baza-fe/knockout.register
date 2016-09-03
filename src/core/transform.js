@@ -33,7 +33,7 @@ function transform(module) {
     } = Object.assign({}, modulePolyfill, module);
 
     insertCss(module.style);
-    methods && Object.assign(constructor.prototype, {
+    Object.assign(constructor.prototype, {
         ref,
         refs,
         ready: noop
