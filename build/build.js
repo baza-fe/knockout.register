@@ -13,8 +13,9 @@ rollup({
     ]
 }).then((bundle) => {
     bundle.write({
-        dest: 'dest/knockout.register.cjs.js',
-        format: 'cjs'
+        dest: 'dest/knockout.register.iife.js',
+        moduleName: 'knockout.register',
+        format: 'iife'
     });
     bundle.write({
         dest: 'dest/knockout.register.es.js',

@@ -1,6 +1,6 @@
+this.knockout = this.knockout || {};
+(function (exports) {
 'use strict';
-
-Object.defineProperty(exports, '__esModule', { value: true });
 
 var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 
@@ -690,3 +690,5 @@ function register(module) {
 
 ko.components._register = ko.components._register || ko.components.register;
 ko.components.register = register;
+
+}((this.knockout.register = this.knockout.register || {})));
