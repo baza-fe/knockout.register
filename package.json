@@ -2,7 +2,7 @@
   "name": "knockout.register",
   "version": "0.0.5",
   "description": "Enhanced knockout component module",
-  "main": "index.js",
+  "main": "dest/knockout.register.cjs.js",
   "scripts": {
     "build": "node build/build.js",
     "pretest": "npm run build",
