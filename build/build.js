@@ -1,4 +1,5 @@
 const rollup = require('rollup').rollup;
+const babelrc = require('babelrc-rollup').default;
 const babel = require('rollup-plugin-babel');
 const commonjs = require('rollup-plugin-commonjs');
 const nodeResolve = require('rollup-plugin-node-resolve');
@@ -6,7 +7,7 @@ const nodeResolve = require('rollup-plugin-node-resolve');
 rollup({
     entry: 'src/index',
     plugins: [
-        babel(),
+        babel(babelrc()),
         nodeResolve({ jsnext: true, main: true }),
         commonjs()
     ]
@@ -16,7 +17,7 @@ rollup({
         format: 'cjs'
     });
     bundle.write({
-        dest: 'dest/knockout.register.es6.js',
-        format: 'es6'
+        dest: 'dest/knockout.register.es.js',
+        format: 'es'
     });
 }).catch(console.error);

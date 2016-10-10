@@ -2,8 +2,7 @@
     "plugins": [
         "transform-object-assign"
     ],
-
     "presets": [
-        "es2015-rollup"
+        "es2015"
     ]
 }

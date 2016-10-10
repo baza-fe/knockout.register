@@ -18,13 +18,13 @@ function getVmForNode(node) {
 }
 
 function querySelector(selector) {
-    var context = arguments.length <= 1 || arguments[1] === undefined ? document : arguments[1];
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     return getVmForNode(context.querySelector(selector));
 }
 
 function querySelectorAll(selector) {
-    var context = arguments.length <= 1 || arguments[1] === undefined ? document : arguments[1];
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     var nodes = ko.utils.makeArray(context.querySelectorAll(selector));
 
@@ -38,7 +38,7 @@ function getElementById() {
 }
 
 function getElementsByTagName(selector) {
-    var context = arguments.length <= 1 || arguments[1] === undefined ? document : arguments[1];
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     var nodes = ko.utils.makeArray(context.getElementsByTagName(selector));
 
@@ -48,7 +48,7 @@ function getElementsByTagName(selector) {
 }
 
 function getElementsByClassName(selector) {
-    var context = arguments.length <= 1 || arguments[1] === undefined ? document : arguments[1];
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     var nodes = ko.utils.makeArray(context.getElementsByClassName(selector));
 
@@ -102,7 +102,7 @@ var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 var utils = ko.utils;
 
 // no-ops function
-function noop() {};
+function noop() {}
 
 // empty component template
 var emptyTemplate = '<!-- empty template -->';
@@ -110,34 +110,34 @@ var emptyTemplate = '<!-- empty template -->';
 // throw error with plugin name
 function throwError(message) {
     throw new Error('knockout.register: ' + message);
-};
+}
 
 // has own property and not falsy value
 function exist(target, key) {
     return target[key] && target.hasOwnProperty(key);
-};
+}
 
 // function type checker
 function isFunction(target) {
     return typeof target === 'function';
-};
+}
 
 // string type checker
 function isString(target) {
     return typeof target === 'string';
-};
+}
 
 // insert dom stylesheet
 function insertCss() {
     return insert.apply(null, arguments);
-};
+}
 
 // my-name => myName
 function normalize(name) {
     return name.split(/\-/g).map(function (word, i) {
         return i > 0 ? word.charAt(0).toUpperCase() + word.substr(1) : word;
     }).join('');
-};
+}
 
 // parse to string to primitive value
 //
@@ -161,7 +161,7 @@ function toPrimitive(value) {
     } else {
         return value;
     }
-};
+}
 
 // iterate dict with given iterator
 //
@@ -175,7 +175,7 @@ function eachDict(dict, iterator) {
     utils.arrayForEach(Object.keys(dict), function (key) {
         iterator(key, dict[key], dict);
     });
-};
+}
 
 // robust mixin
 //
@@ -222,7 +222,7 @@ function mixin(dest, opts, mixins) {
     delete dest.postMix;
 
     return dest;
-};
+}
 
 function apply(selector, contextNode) {
     if (isString(contextNode)) {
@@ -244,7 +244,7 @@ function apply(selector, contextNode) {
         bindingStatements.push('skip: true');
         node.setAttribute('data-bind', bindingStatements.join(','));
     });
-};
+}
 
 // create computed observalbes on context
 //
@@ -254,7 +254,7 @@ function computedAll(context, methods) {
     eachDict(methods, function (name, method) {
         context[name] = ko.computed(method, context);
     });
-};
+}
 
 // create pure computed observalbes on context
 //
@@ -264,21 +264,7 @@ function pureComputedAll(context, methods) {
     eachDict(methods, function (name, method) {
         context[name] = ko.pureComputed(method, context);
     });
-};
-
-var _extends = Object.assign || function (target) {
-  for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i];
-
-    for (var key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        target[key] = source[key];
-      }
-    }
-  }
-
-  return target;
-};
+}
 
 var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
 var observableAttrNameRE = /^k-([\w\-]+)/i;
@@ -363,7 +349,7 @@ function pluck(node) {
         bindingContext = ko.contextFor(node);
     }
 
-    return _extends(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString), observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
+    return Object.assign(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString), observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
 }
 
 var modulePolyfill = {
@@ -377,7 +363,7 @@ var modulePolyfill = {
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
 function transform(module) {
-    var _Object$assign = _extends({}, modulePolyfill, module);
+    var _Object$assign = Object.assign({}, modulePolyfill, module);
 
     var constructor = _Object$assign.constructor;
     var defaults = _Object$assign.defaults;
@@ -390,12 +376,12 @@ function transform(module) {
 
 
     insertCss(module.style);
-    methods && _extends(constructor.prototype, methods);
+    methods && Object.assign(constructor.prototype, methods);
 
     return {
         viewModel: {
             createViewModel: function createViewModel(params, componentInfo) {
-                var opts = _extends(ko.toJS(params), defaults, pluck(componentInfo.element));
+                var opts = Object.assign(ko.toJS(params), defaults, pluck(componentInfo.element));
                 var vm = new constructor(opts, componentInfo);
 
                 mixins && mixin(vm, opts, mixins);
@@ -449,5 +435,5 @@ ko.components.register = register;
 ko.utils.mixin = ko.utils.mixin || mixin;
 ko.utils.insertCss = ko.utils.insertCss || insertCss;
 
-// extend knockuot components
+// extend knockout components
 ko.components.apply = ko.components.apply || apply;

@@ -47,9 +47,7 @@ module.exports = function(config) {
     rollupPreprocessor: {
         rollup: {
             plugins: [
-                require('rollup-plugin-babel')({
-                    runtimeHelpers: true
-                }),
+                require('rollup-plugin-babel')(require('babelrc-rollup').default()),
                 require('rollup-plugin-node-resolve')({ jsnext: true, main: true }),
                 require('rollup-plugin-commonjs')()
             ]
