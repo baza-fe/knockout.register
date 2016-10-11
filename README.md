@@ -13,7 +13,7 @@ npm install knockout.register --save
 
 ```html
 <script src="knockout.3.4.0.js"></script>
-<script src="node_modules/knockout.register/dest/knockout.register.cjs.js"></script>
+<script src="node_modules/knockout.register/dest/knockout.register.js"></script>
 ```
 
 ## Defination

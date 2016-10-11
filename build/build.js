@@ -13,12 +13,8 @@ rollup({
     ]
 }).then((bundle) => {
     bundle.write({
-        dest: 'dest/knockout.register.iife.js',
+        dest: 'dest/knockout.register.js',
         moduleName: 'knockout.register',
         format: 'iife'
-    });
-    bundle.write({
-        dest: 'dest/knockout.register.es.js',
-        format: 'es'
     });
 }).catch(console.error);
