@@ -15,15 +15,22 @@ export function normalize(name) {
     }).join('');
 };
 
-// function type checker
-export function isFunction(target) {
-    return typeof target === 'function';
+// type checker
+export function isType(name) {
+    return function (real) {
+        return Object.prototype.toString.call(real) === `[object ${name}]`;
+    };
 };
 
-// string type checker
-export function isString(target) {
-    return typeof target === 'string';
-};
+// type checkers
+export const isString = isType('String');
+export const isNumber = isType('Number');
+export const isBoolean = isType('Boolean');
+export const isObject = isType('Object');
+export const isArray = isType('Array');
+export const isFunction = isType('Function');
+export const isDate = isType('Date');
+export const isRegExp = isType('RegExp');
 
 // parse to string to primitive value
 //
@@ -49,7 +56,76 @@ export function toPrimitive(value) {
     }
 };
 
-// iterate dict with given iterator
+// transform array like object to real array
+//
+// @param {Object} target
+// @return {Array}
+export function toArray(target) {
+    let len = target.length;
+    let result = [];
+
+    while (len-- >= 0) {
+        result[len] = target[len];
+    }
+
+    return result;
+};
+
+// iterate array or array like object
+//
+// @param {Array|Object} target
+// @param {Function} iterator
+export function each(target, iterator) {
+    let i, len;
+
+    for (i = 0, len = target.length; i < len; i += 1) {
+        if (iterator(target[i], i, target) === false) {
+            return;
+        }
+    }
+};
+
+// iterate array or array like object and check those items some true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+export function some(target, checker) {
+    let result = false;
+
+    each(target, (item, i) => {
+        if (checker(item, i, target)) {
+            result = true;
+            return false;
+        }
+    });
+
+    return result;
+};
+
+// iterate array or array like object and check those items all true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+export function every(target, checker) {
+    if (!target || !target.length) {
+        return false;
+    }
+
+    let result = true;
+
+    each(target, (item, i) => {
+        if (!checker(item, i, target)) {
+            result = false;
+            return false;
+        }
+    });
+
+    return result;
+};
+
+// iterate dict
 //
 // @param {Object} dict
 // @param {Function} iterator
@@ -58,7 +134,9 @@ export function eachDict(dict, iterator) {
         return;
     }
 
-    ko.utils.arrayForEach(Object.keys(dict), (key) => {
-        iterator(key, dict[key], dict);
+    each(Object.keys(dict), (key) => {
+        if (iterator(key, dict[key], dict) === false) {
+            return;
+        }
     });
 };

@@ -1,1 +1,2 @@
-export * from './core/register';
+import './core/validator';
+import './core/register';

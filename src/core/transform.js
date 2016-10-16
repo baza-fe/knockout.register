@@ -4,6 +4,7 @@ import {
     refs,
     noop,
     mixin,
+    observable,
     insertCss,
     emptyTemplate,
     computedAll,
@@ -25,6 +26,7 @@ function transform(module) {
         name,
         constructor,
         defaults,
+        props,
         mixins,
         methods,
         computed,
@@ -53,9 +55,11 @@ function transform(module) {
                 );
                 const vm = new constructor(opts, componentInfo);
 
-                mixins && mixin(vm, opts, mixins)
+                props && observable(vm, opts);
+                mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
+
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
