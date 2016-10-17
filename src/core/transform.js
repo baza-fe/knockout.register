@@ -55,7 +55,7 @@ function transform(module) {
                 );
                 const vm = new constructor(opts, componentInfo);
 
-                props && observable(vm, opts);
+                props && Object.assign(vm, observable(opts, props));
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);

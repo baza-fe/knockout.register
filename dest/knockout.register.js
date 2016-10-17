@@ -1,5 +1,5 @@
 this.knockout = this.knockout || {};
-(function (exports) {
+(function () {
 'use strict';
 
 var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
@@ -7,9 +7,14 @@ var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 // no-ops function
 function noop() {}
 
+// has own property
+function hasOwn(target, key) {
+    return target.hasOwnProperty(key);
+}
+
 // has own property and not falsy value
 function exist(target, key) {
-    return target[key] && target.hasOwnProperty(key);
+    return target[key] && hasOwn(target, key);
 }
 
 // my-name => myName
@@ -19,15 +24,22 @@ function normalize(name) {
     }).join('');
 }
 
-// function type checker
-function isFunction(target) {
-    return typeof target === 'function';
+// type checker
+function isType(name) {
+    return function (real) {
+        return Object.prototype.toString.call(real) === '[object ' + name + ']';
+    };
 }
 
-// string type checker
-function isString(target) {
-    return typeof target === 'string';
-}
+// type checkers
+var isString = isType('String');
+var isNumber = isType('Number');
+var isBoolean = isType('Boolean');
+var isObject = isType('Object');
+var isArray = isType('Array');
+var isFunction = isType('Function');
+var isDate = isType('Date');
+var isRegExp = isType('RegExp');
 
 // parse to string to primitive value
 //
@@ -53,7 +65,77 @@ function toPrimitive(value) {
     }
 }
 
-// iterate dict with given iterator
+// transform array like object to real array
+//
+// @param {Object} target
+// @return {Array}
+function toArray(target) {
+    var len = target.length;
+    var result = [];
+
+    while (len-- >= 0) {
+        result[len] = target[len];
+    }
+
+    return result;
+}
+
+// iterate array or array like object
+//
+// @param {Array|Object} target
+// @param {Function} iterator
+function each(target, iterator) {
+    var i = void 0,
+        len = void 0;
+
+    for (i = 0, len = target.length; i < len; i += 1) {
+        if (iterator(target[i], i, target) === false) {
+            return;
+        }
+    }
+}
+
+// iterate array or array like object and check those items some true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+function some(target, checker) {
+    var result = false;
+
+    each(target, function (item, i) {
+        if (checker(item, i, target)) {
+            result = true;
+            return false;
+        }
+    });
+
+    return result;
+}
+
+// iterate array or array like object and check those items all true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+function every(target, checker) {
+    if (!target || !target.length) {
+        return false;
+    }
+
+    var result = true;
+
+    each(target, function (item, i) {
+        if (!checker(item, i, target)) {
+            result = false;
+            return false;
+        }
+    });
+
+    return result;
+}
+
+// iterate dict
 //
 // @param {Object} dict
 // @param {Function} iterator
@@ -62,8 +144,10 @@ function eachDict(dict, iterator) {
         return;
     }
 
-    ko.utils.arrayForEach(Object.keys(dict), function (key) {
-        iterator(key, dict[key], dict);
+    each(Object.keys(dict), function (key) {
+        if (iterator(key, dict[key], dict) === false) {
+            return;
+        }
     });
 }
 
@@ -148,7 +232,7 @@ module.exports = function (css, options) {
 var insert = interopDefault(index);
 
 // empty component template
-var emptyTemplate = '<!-- empty template -->';
+var emptyTemplate = '<noscript><!-- empty template --></noscript>';
 
 // throw error with plugin name
 //
@@ -314,6 +398,266 @@ ko.components.querySelectorAll = querySelectorAll;
 ko.components.getElementById = getElementById;
 ko.components.getElementsByTagName = getElementsByTagName;
 ko.components.getElementsByClassName = getElementsByClassName;
+
+var hasConsole = !!window.console;
+
+function warn(msg, extra) {
+     hasConsole && console.error(msg, extra);
+}
+
+function isBasic(value) {
+    return isString(value) || isNumber(value) || isBoolean(value);
+}
+
+// Clone array items and create observable array
+//
+// @param {Array} data
+function observableArray$$1(data) {
+    each(data, function (item, i) {
+        if (ko.isObservable(item)) {
+            return true;
+        }
+
+        if (isObject(item)) {
+            data[i] = observableObject$$1(item);
+        } else if (isArray(item)) {
+            data[i] = observableArray$$1(item);
+        }
+    });
+
+    return ko.observableArray(data);
+}
+
+// Clone properties and create observable object
+//
+// @param {Object} data
+function observableObject$$1(data) {
+    eachDict(data, function (propKey, propValue) {
+        if (ko.isObservable(propValue)) {
+            return true;
+        }
+
+        if (isObject(propValue)) {
+            data[propKey] = observableObject$$1(propValue);
+        } else if (isArray(propValue)) {
+            data[propKey] = observableArray$$1(propValue);
+        } else if (isBasic(propValue)) {
+            data[propKey] = ko.observable(propValue);
+        } else {
+            data[propKey] = propValue;
+        }
+    });
+
+    return data;
+}
+
+// Run validator on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Object|Function} validator
+// @return {Boolean}
+function validProp$$1(propName, propValue, data, validator) {
+    var isWrapped = isObject(validator);
+    var required = isWrapped ? validator.required : false;
+    var defaultValue = isWrapped ? validator.default : undefined;
+
+    validator = isWrapped ? validator.type : validator;
+    propValue = ko.unwrap(propValue);
+    propValue = propValue === undefined ? defaultValue : propValue;
+
+    // required
+    if (propValue === undefined && required) {
+        warn('Invalid prop: Missing required prop: ' + propName, data);
+        return false;
+    } else if (!validator(propValue)) {
+        warn('Invalid prop: key: ' + propName + ', propValue: ' + propValue, data);
+        return false;
+    } else {
+        data[propName] = propValue;
+        return true;
+    }
+}
+
+// Run object validators on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Object} validators
+// @return {Boolean}
+function validObject$$1(propName, propValue, data, validators) {
+    propValue = ko.unwrap(propValue);
+    data = data[propName] = {};
+
+    return every(Object.keys(validators), function (subPropName) {
+        var validator = validators[subPropName];
+        var subPropValue = propValue ? propValue[subPropName] : undefined;
+
+        if (isFunction(validator) || isObject(validator) && hasOwn(validator, 'type')) {
+            return validProp$$1(subPropName, subPropValue, data, validator);
+        } else if (isObject(validator)) {
+            data[subPropName] = {};
+
+            return validObject$$1(subPropName, subPropValue, data[subPropName], validator);
+        } else if (isArray(validator)) {
+            var len = validator.length;
+
+            // oneOfType
+            if (len > 1) {
+                return validWithin$$1(subPropName, subPropValue, data, validator);
+
+                // arrayOf
+            } else {
+                data[subPropName] = [];
+
+                return validArray$$1(subPropName, subPropValue, data[subPropName], validator[0]);
+            }
+        } else {
+            warn('Invalid validator: ' + validator, data);
+            return false;
+        }
+    });
+}
+
+// Run validators on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Array} validators
+// @return {Boolean}
+function validWithin$$1(propName, propValue, data, validators) {
+    propValue = ko.unwrap(propValue);
+
+    return some(validators, function (validator) {
+        return validArray$$1(propName, [propValue], [], validator);
+    }) ? (data[propName] = propValue) !== undefined : false;
+}
+
+// Run validator on given array prop
+//
+// @param {String} propName
+// @param {Array} propValue
+// @param {Array} data
+// @param {Object|Array|Function} validator
+// @return {Boolean}
+function validArray$$1(propName, propValue, data, validator) {
+    var validMethod = void 0;
+    var useValidArray = false;
+
+    if (isFunction(validator) || isObject(validator) && hasOwn(validator, 'type')) {
+        validMethod = validProp$$1;
+    } else if (isObject(validator)) {
+        validMethod = validObject$$1;
+    } else if (isArray(validator)) {
+        if (validator.length > 1) {
+            validMethod = validWithin$$1;
+        } else {
+            validMethod = validArray$$1;
+            useValidArray = true;
+        }
+    } else {
+        warn('Invalid validator: ' + validator, data);
+        return false;
+    }
+
+    propValue = ko.unwrap(propValue);
+
+    return every(propValue, function (item, i) {
+        var validResult = useValidArray ? [] : {};
+
+        return validMethod(i, item, validResult, validator) ? data.push(useValidArray ? validResult : validResult[i]) !== undefined : false;
+    });
+}
+
+// Create view model according to validators
+//
+// @param {Object} data
+// @param {Object} validators
+function observable$$1(data, validators) {
+    if (!isObject(data)) {
+        warn('Invalid props: ' + data);
+        return null;
+    } else {
+        var validResult = {};
+
+        validObject$$1('data', data, validResult, validators);
+        observableObject$$1(validResult);
+
+        return validResult['data'];
+    }
+}
+
+function is(constructor) {
+    return function (actual) {
+        return actual instanceof constructor;
+    };
+}
+
+var validators = {
+
+    // basic types run validator immediately
+    // true valid
+    // false invalid
+    String: isString,
+    Number: isNumber,
+    Boolean: isBoolean,
+    Object: isObject,
+    Array: isArray,
+    Function: isFunction,
+    Date: isDate,
+    RegExp: isRegExp,
+    instanceof: is,
+    Node: is(Node),
+    Element: is(Element),
+    any: function any(actual) {
+        return actual !== null && actual !== undefined;
+    },
+    oneOf: function oneOf() {
+        var enums = toArray(arguments);
+
+        return function (actual) {
+            return some(enums, function (expected) {
+                return actual === expected;
+            });
+        };
+    },
+
+
+    // combination types not run validator immediately
+    // [ ... ] List of validators at least fullfill one validator
+    // { ... } Validators in { key: validator } pair all validators need to fullfill
+
+    // Construct shape validators
+    //
+    // @param {Object} plan
+    // @return {Object}
+    shape: function shape(plan) {
+        return plan;
+    },
+
+
+    // Construct array validators
+    //
+    // @param {Function} validator
+    // @return {Array}
+    arrayOf: function arrayOf(validator) {
+        return [validator];
+    },
+
+
+    // Construct type validators
+    //
+    // @param {Function...}
+    // @return {Array}
+    oneOfType: function oneOfType() {
+        return arguments.length > 1 ? toArray(arguments) : arguments[0];
+    }
+};
+
+ko.types = ko.types || validators;
 
 var asyncGenerator = function () {
   function AwaitValue(value) {
@@ -621,6 +965,7 @@ function transform(module) {
     var name = _Object$assign.name;
     var constructor = _Object$assign.constructor;
     var defaults$$1 = _Object$assign.defaults;
+    var props = _Object$assign.props;
     var mixins = _Object$assign.mixins;
     var methods = _Object$assign.methods;
     var computed = _Object$assign.computed;
@@ -644,6 +989,7 @@ function transform(module) {
                 var opts = _extends({}, defaults$$1, ko.toJS(params), pluck(componentInfo.element));
                 var vm = new constructor(opts, componentInfo);
 
+                props && _extends(vm, observable$$1(opts, props));
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
@@ -691,4 +1037,4 @@ function register(module) {
 ko.components._register = ko.components._register || ko.components.register;
 ko.components.register = register;
 
-}((this.knockout.register = this.knockout.register || {})));
+}());

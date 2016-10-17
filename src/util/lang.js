@@ -3,9 +3,14 @@ const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 // no-ops function
 export function noop() {};
 
+// has own property
+export function hasOwn(target, key) {
+    return target.hasOwnProperty(key);
+};
+
 // has own property and not falsy value
 export function exist(target, key) {
-    return target[key] && target.hasOwnProperty(key);
+    return target[key] && hasOwn(target, key);
 };
 
 // my-name => myName

@@ -1,6 +1,5 @@
 import {
     some,
-    every,
     toArray,
     eachDict,
     isString,
@@ -10,16 +9,21 @@ import {
     isArray,
     isFunction,
     isDate,
-    isRegExp
+    isRegExp,
+    hasOwn
 } from '../util/';
 
 function is(constructor) {
-    return function (real) {
-        return real instanceof constructor;
+    return (actual) => {
+        return actual instanceof constructor;
     };
 }
 
 const validators = {
+
+    // basic types run validator immediately
+    // true valid
+    // false invalid
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
@@ -28,47 +32,48 @@ const validators = {
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
-
     instanceof: is,
     Node: is(Node),
     Element: is(Element),
-
-    any(real) {
-        return real !== null && real !== undefined;
+    any(actual) {
+        return actual !== null && actual !== undefined;
     },
-
-    shape(plan) {
-        return function (real) {
-            if (!isObject(real)) {
-                return false;
-            }
-
-            const result = every(Object.keys(real), (key) => {
-                return plan[key](real[key]);
-            });
-
-            return result;
-        };
-    },
-
     oneOf() {
-        const emnus = toArray(arguments);
+        const enums = toArray(arguments);
 
-        return function (real) {
-            return some(emnus, (expected) => {
-                return real === expected;
+        return (actual) => {
+            return some(enums, (expected) => {
+                return actual === expected;
             });
         };
     },
 
-    oneOfType() {
-        const validators = toArray(arguments);
+    // combination types not run validator immediately
+    // [ ... ] List of validators at least fullfill one validator
+    // { ... } Validators in { key: validator } pair all validators need to fullfill
 
-        return function (real) {
-            return some(validators, (validator) => {
-                return validator(real);
-            });
-        };
+    // Construct shape validators
+    //
+    // @param {Object} plan
+    // @return {Object}
+    shape(plan) {
+        return plan;
+    },
+
+    // Construct array validators
+    //
+    // @param {Function} validator
+    // @return {Array}
+    arrayOf(validator) {
+        return [ validator ];
+    },
+
+    // Construct type validators
+    //
+    // @param {Function...}
+    // @return {Array}
+    oneOfType() {
+        return arguments.length > 1 ? toArray(arguments) : arguments[0];
     }
 };
 

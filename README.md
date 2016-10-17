@@ -85,19 +85,19 @@ ko.components.register('my-component', {
 
 + type: `String` _(required)_
 
-The name for component and custom element.HTML elements are case-insensitive, so when using component the name need to use their kebab-case(hyphen delimited) equivalents eg. `my-component`.
+The name for component and custom element.HTML elements are case-insensitive, so when using component the name need to use their kebab-case equivalents(eg. `my-component`).
 
 #### `props`
 
 + type: `Object` _(default: `null`)_
 
-A prop is a custom attribute for passing information from parent components.A child component needs to explicity declare the props it expects to receive using the this options.
+A prop is a custom attribute for passing information from parent components.A child component needs to explicity declare the props it expects to receive using this options.
 
 ```js
 export default {
     name: 'child',
     props: {
-        text: String
+        text: ko.types.String
     }
 };
 ```
@@ -116,26 +116,67 @@ It is possible for a component to specify requirements for the props it is recei
 
 When a prop validation fails, the plugin will produce a console warning(if using the development build).
 
-The validateor can be a custom function or one of the following native constructors:
+The validator can be a custom function, native constructors or combination:
 
-+ String
-+ Number
-+ Boolean
-+ Function
-+ Object
-+ Array
-+ Date
-+ RegExp
-+ Node
-+ Element
+```js
+export default {
+    props: {
 
-Or combination of them:
+        // basic type checker
+        optionalString: ko.types.String,
+        optionalNumber: ko.types.Number,
+        optionalBoolean: ko.types.Boolean,
+        optionalFunction: ko.types.Function,
+        optionalObject: ko.types.Object,
+        optionalArray: ko.types.Array,
+        optionalDate: ko.types.Date,
+        optionalRegexp: ko.types.Regexp,
+        optionalNode: ko.types.Node,
+        optionalElement: ko.types.Element,
+        optionalAny: ko.types.any,
+        optionalUser: ko.types.instanceof(User),
 
-+ any()
-+ shape()
-+ oneOf()
-+ oneOfType()
-+ instanceof()
+        // combination type checker
+        optionalObjectWithShape: {
+            optionalString: ko.types.String,
+            optionalNumber: ko.types.Number,
+            optionalBoolean: ko.types.Boolean
+        },
+        optionalArrayOfObjectsWithShape: ko.types.arrayOf(
+            ko.types.shape({
+                string: ko.types.String,
+                number: ko.types.Number,
+                boolean: ko.types.Boolea
+            })
+        ),
+        optionalEnum: ko.types.oneOf('button', 'submit', 'reset'),
+        optionalUnion: ko.types.oneOfType(
+            ko.types.String,
+            ko.types.Number,
+            ko.types.Boolean
+        ),
+
+        // custom validator
+        customProp(props, propName) => {
+            if (/* ... */) {
+                return true; // valid
+            } else {
+                return false // invalid
+            }
+        },
+
+        // misc
+        requiredString: {
+            type: ko.types.String,
+            required: true
+        },
+        stringWithDefaultValue: {
+            type: ko.types.String,
+            default: 'default string'
+        }
+    }
+};
+```
 
 #### `computed` & `pureComputed`
 
@@ -160,14 +201,16 @@ export default {
 
 + type: `Array` _(default: `null`)_
 
-A mixin is a methods collection reused in multiply components.The merge stratege is dead simple just copy methods from a mixin to `methods` of target component.It is possible for a mixin to do something before and after mixing.
+A mixin is a methods collection reused in multiply components.The merge stratege is dead simple just copy methods from a mixin to `methods` option of target component.
+
+It is possible for a mixin to do something before and after mixing.
 
 ```js
 export default {
 
     // before mixing
     preMix() {
-        this; // => this keyword refer to target component
+        this; // => this keyword refer to view model
     },
 
     // after mixing
@@ -184,7 +227,7 @@ export default {
 
 + type: `Object` _(default: `null`)_
 
-Built-in lifecycle and custom methods which shared by every component instance.
+Built-in lifecycle and custom methods.The `this` keyword refs to building view model in lifecycle methods and not enuse in custom methods.
 
 ```js
 export default {
@@ -206,6 +249,10 @@ export default {
         ready() {
             this.text(); // => ''
             this.componentInfo.element; // => element
+        },
+
+        customMethod() {
+            this; // => not ref to view model all the time
         }
     }
 };
