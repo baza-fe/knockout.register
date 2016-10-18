@@ -393,7 +393,7 @@ function warn(msg, extra) {
      hasConsole && console.error(msg, extra);
 }
 
-function isNode(target) {
+function isNode(target, name) {
     var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
 
     return nodeName === name;
