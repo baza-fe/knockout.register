@@ -1,6 +1,10 @@
 const defaultSpy = document.createComment('spy');
 
 function getVmForNode(node) {
+    if (!node) {
+        return null;
+    }
+
     let spy = node.lastElementChild || defaultSpy;
     let useDefault = spy === defaultSpy;
 
