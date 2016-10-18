@@ -376,22 +376,6 @@ function getElementsByClassName(selector) {
     });
 }
 
-// ref vm
-//
-// @param {String} query
-// @param {Node} context
-function ref(query, context) {
-    return ko.components.querySelector(query, context || this.componentInfo.element);
-}
-
-// ref vms
-//
-// @param {String} query
-// @param {Node} context
-function refs(query, context) {
-    return ko.components.querySelectorAll(query, context || this.componentInfo.element);
-}
-
 // extend ko.components
 ko.components.querySelector = querySelector;
 ko.components.querySelectorAll = querySelectorAll;
@@ -405,11 +389,128 @@ function warn(msg, extra) {
      hasConsole && console.error(msg, extra);
 }
 
+function isNode(target) {
+    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
+
+    return nodeName === name;
+}
+
+// Pluck dom node from given template
+//
+// @param {Array|String|Node} tpl
+function pluckNodes(tpl) {
+    if (isArray(tpl)) {
+        return tpl;
+    }
+
+    if (isString(tpl)) {
+        return ko.utils.parseHtmlFragment(tpl);
+    }
+
+    if (tpl.nodeType === Node.ELEMENT_NODE) {
+        return [tpl];
+    }
+}
+
+// Pluck slot node from given node list
+//
+// @param {Array} nodes
+function pluckSlots(nodes) {
+    var slots = [];
+
+    each(nodes, function (node) {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return;
+        }
+
+        if (isNode(node, 'slot')) {
+            slots.push(node);
+        } else {
+            each(node.getElementsByTagName('slot'), function (slot$$1) {
+                slots.push(slot$$1);
+            });
+        }
+    });
+
+    return slots;
+}
+
+// Pair slots according to name
+//
+// @param {Array} srcSlots
+// @param {Array} destSlots
+function matchSlots(srcSlots, destSlots) {
+    var slotMaps = {};
+    var slotPairs = [];
+    var srcSlotsLen = srcSlots.length;
+
+    each(srcSlots.concat(destSlots), function (slot$$1, i) {
+        var slotName = slot$$1.getAttribute('name');
+        var slotMap = slotMaps[slotName] = slotMaps[slotName] || {
+            src: null,
+            dest: []
+        };
+
+        if (i < srcSlotsLen) {
+            slotMap.src = slot$$1;
+        } else {
+            slotMap.dest.push(slot$$1);
+        }
+    });
+
+    var slotNames = Object.keys(slotMaps);
+
+    each(slotNames, function (slotName) {
+        var slotMap = slotMaps[slotName];
+
+        if (!slotMap.src || !slotMap.dest.length) {
+            return;
+        }
+
+        each(slotMap.dest, function (destSlot) {
+            slotPairs.push({
+                name: slotName,
+                src: slotMap.src,
+                dest: destSlot
+            });
+        });
+    });
+
+    return slotPairs;
+}
+
+// Replace dest slot into source slot according to name
+//
+// @param {Array} srcSlots
+// @param {Array} destSlots
+function replaceSlot(srcSlot, destSlot) {
+    if (srcSlot && destSlot) {
+        destSlot.parentNode.replaceChild(srcSlot.cloneNode(true), destSlot);
+    } else {
+        srcSlot.parentNode.removeChild(srcSlot);
+        destSlot.parentNode.removeChild(detSlot);
+    }
+}
+
+function slot$$1(srcTpl, destTpl) {
+    var srcNodes = pluckNodes(srcTpl);
+    var destNodes = pluckNodes(destTpl);
+    var srcSlots = pluckSlots(srcNodes);
+    var destSlots = pluckSlots(destNodes);
+    var slotPairs = matchSlots(srcSlots, destSlots);
+
+    each(slotPairs, function (slotPair) {
+        replaceSlot(slotPair.src, slotPair.dest);
+    });
+
+    return srcNodes;
+}
+
 function isBasic(value) {
     return isString(value) || isNumber(value) || isBoolean(value);
 }
 
-// Clone array items and create observable array
+// Observable array and object items
 //
 // @param {Array} data
 function observableArray$$1(data) {
@@ -428,7 +529,7 @@ function observableArray$$1(data) {
     return ko.observableArray(data);
 }
 
-// Clone properties and create observable object
+// Observable object properties
 //
 // @param {Object} data
 function observableObject$$1(data) {
@@ -449,6 +550,20 @@ function observableObject$$1(data) {
     });
 
     return data;
+}
+
+// Link array observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+
+
+// Link object observable with validators
+//
+// @param {Object} data
+// @param {Object} validators
+function linkObjectObservable$$1(data, validators) {
+    return;
 }
 
 // Run validator on given prop
@@ -592,11 +707,104 @@ function observable$$1(data, validators) {
         var validResult = {};
 
         validObject$$1('data', data, validResult, validators);
-        observableObject$$1(validResult);
+        linkObjectObservable$$1(validResult);
+        observableObject$$1(validResult, validators);
 
         return validResult['data'];
     }
 }
+
+var slotLoader = {
+    id: 'slotLoader',
+    loadViewModel: function loadViewModel(name, vmConfig, callback) {
+        var ctor = null;
+        var originalCreateViewModel = null;
+
+        function wrapperedCreateViewModel(params, componentInfo) {
+            slot$$1(componentInfo.templateNodes, componentInfo.element);
+
+            if (ctor) {
+                return new ctor(params, componentInfo);
+            } else if (originalCreateViewModel) {
+                return originalCreateViewModel(params, componentInfo);
+            } else {
+                return null;
+            }
+        }
+
+        if (!vmConfig) {
+            return callback(null);
+        }
+
+        if (vmConfig && isObject(vmConfig)) {
+            if (!vmConfig.createViewModel) {
+                return callback(null);
+            }
+
+            originalCreateViewModel = vmConfig.createViewModel;
+        } else if (isFunction(vmConfig)) {
+            ctor = vmConfig;
+        }
+
+        callback(wrapperedCreateViewModel);
+    }
+};
+
+ko.components.loaders.unshift(slotLoader);
+
+var manualRenderFlagName = '__manual_render_flag__';
+var beginManualRenderTag = document.createComment('ko if: $data.' + manualRenderFlagName);
+var beginAfterRenderTag = document.createComment('ko template: { afterRender: ready.bind($data) }');
+var endTag = document.createComment('/ko');
+var base = {
+    ref: function ref(query, context) {
+        return ko.components.querySelector(query, context || this.componentInfo.element);
+    },
+    refs: function refs(query, context) {
+        return ko.components.querySelectorAll(query, context || this.componentInfo.element);
+    },
+    render: function render() {
+        this[manualRenderFlagName](false);
+        this[manualRenderFlagName](true);
+    }
+};
+
+var lifeComponentLoader = {
+    id: 'lifeComponentLoader',
+    loadViewModel: function loadViewModel(name, vmConfig, callback) {
+        var originalCreateViewModel = null;
+
+        if (vmConfig && isObject(vmConfig) && isFunction(vmConfig.createViewModel)) {
+            originalCreateViewModel = vmConfig.createViewModel;
+            vmConfig.createViewModel = function (params, componentInfo) {
+                var vm = new originalCreateViewModel(params, componentInfo);
+
+                vm[manualRenderFlagName] = ko.observable(true).extend({ notify: 'always' });
+                vm.ready = vm.ready || noop;
+                vm.created = vm.created || noop;
+                vm.ref = base.ref;
+                vm.refs = base.refs;
+                vm.render = base.render;
+                vm.created();
+
+                return vm;
+            };
+        }
+
+        callback(null);
+    },
+    loadTemplate: function loadTemplate(name, templateConfig, callback) {
+        ko.components.defaultLoader.loadTemplate(name, templateConfig, function (domNodeArray) {
+            domNodeArray.unshift(beginManualRenderTag.cloneNode());
+            domNodeArray.push(endTag.cloneNode());
+            domNodeArray.push(beginAfterRenderTag.cloneNode());
+            domNodeArray.push(endTag.cloneNode());
+            callback(domNodeArray);
+        });
+    }
+};
+
+ko.components.loaders.unshift(lifeComponentLoader);
 
 function is(constructor) {
     return function (actual) {
@@ -666,133 +874,6 @@ var validators = {
 };
 
 ko.types = ko.types || validators;
-
-var asyncGenerator = function () {
-  function AwaitValue(value) {
-    this.value = value;
-  }
-
-  function AsyncGenerator(gen) {
-    var front, back;
-
-    function send(key, arg) {
-      return new Promise(function (resolve, reject) {
-        var request = {
-          key: key,
-          arg: arg,
-          resolve: resolve,
-          reject: reject,
-          next: null
-        };
-
-        if (back) {
-          back = back.next = request;
-        } else {
-          front = back = request;
-          resume(key, arg);
-        }
-      });
-    }
-
-    function resume(key, arg) {
-      try {
-        var result = gen[key](arg);
-        var value = result.value;
-
-        if (value instanceof AwaitValue) {
-          Promise.resolve(value.value).then(function (arg) {
-            resume("next", arg);
-          }, function (arg) {
-            resume("throw", arg);
-          });
-        } else {
-          settle(result.done ? "return" : "normal", result.value);
-        }
-      } catch (err) {
-        settle("throw", err);
-      }
-    }
-
-    function settle(type, value) {
-      switch (type) {
-        case "return":
-          front.resolve({
-            value: value,
-            done: true
-          });
-          break;
-
-        case "throw":
-          front.reject(value);
-          break;
-
-        default:
-          front.resolve({
-            value: value,
-            done: false
-          });
-          break;
-      }
-
-      front = front.next;
-
-      if (front) {
-        resume(front.key, front.arg);
-      } else {
-        back = null;
-      }
-    }
-
-    this._invoke = send;
-
-    if (typeof gen.return !== "function") {
-      this.return = undefined;
-    }
-  }
-
-  if (typeof Symbol === "function" && Symbol.asyncIterator) {
-    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
-      return this;
-    };
-  }
-
-  AsyncGenerator.prototype.next = function (arg) {
-    return this._invoke("next", arg);
-  };
-
-  AsyncGenerator.prototype.throw = function (arg) {
-    return this._invoke("throw", arg);
-  };
-
-  AsyncGenerator.prototype.return = function (arg) {
-    return this._invoke("return", arg);
-  };
-
-  return {
-    wrap: function (fn) {
-      return function () {
-        return new AsyncGenerator(fn.apply(this, arguments));
-      };
-    },
-    await: function (value) {
-      return new AwaitValue(value);
-    }
-  };
-}();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
@@ -983,11 +1064,7 @@ function transform(module) {
 
 
     insertCss(module.style);
-    _extends(constructor.prototype, {
-        ref: ref,
-        refs: refs,
-        ready: noop
-    }, methods);
+    _extends(constructor.prototype, methods);
 
     return {
         viewModel: {
