@@ -10,7 +10,6 @@ import {
 } from '../util/';
 
 const modulePolyfill = {
-    constructor: noop,
     defaults: {},
     template: emptyTemplate
 };
@@ -31,7 +30,9 @@ function transform(module) {
         pureComputed,
         style,
         template
-    } = Object.assign({}, modulePolyfill, module);
+    } = Object.assign({
+        constructor: function() {}
+    }, modulePolyfill, module);
 
     insertCss(module.style);
     Object.assign(constructor.prototype, methods);
@@ -53,7 +54,6 @@ function transform(module) {
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
-
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
