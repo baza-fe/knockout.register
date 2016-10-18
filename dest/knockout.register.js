@@ -1043,7 +1043,6 @@ function pluck(node) {
 }
 
 var modulePolyfill = {
-    constructor: noop,
     defaults: {},
     template: emptyTemplate
 };
@@ -1053,7 +1052,9 @@ var modulePolyfill = {
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
 function transform(module) {
-    var _Object$assign = _extends({}, modulePolyfill, module);
+    var _Object$assign = _extends({
+        constructor: function constructor() {}
+    }, modulePolyfill, module);
 
     var name = _Object$assign.name;
     var constructor = _Object$assign.constructor;
