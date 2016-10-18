@@ -300,6 +300,10 @@ ko.utils.insertCss = ko.utils.insertCss || insertCss;
 var defaultSpy = document.createComment('spy');
 
 function getVmForNode(node) {
+    if (!node) {
+        return null;
+    }
+
     var spy = node.lastElementChild || defaultSpy;
     var useDefault = spy === defaultSpy;
 
