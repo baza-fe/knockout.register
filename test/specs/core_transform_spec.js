@@ -45,16 +45,6 @@ describe('transform', () => {
         expect(prototype.bar).toBe(methods.bar);
     });
 
-    it('should define lifecycle methods', () => {
-        const prototype = Component.constructor.prototype;
-
-        transform(Component);
-
-        expect(prototype.ref).toBeDefined();
-        expect(prototype.refs).toBeDefined();
-        expect(prototype.ready).toBeDefined();
-    });
-
     it('should insert css into dom', () => {
         const styleNodes = document.querySelectorAll('style');
         const result = ko.utils.makeArray(styleNodes).some((node) => {

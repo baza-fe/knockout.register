@@ -17,6 +17,10 @@ function isBasic(value) {
     return isString(value) || isNumber(value) || isBoolean(value);
 }
 
+function isArrayObservable(target) {
+    return ko.isObservable(target) && isArray(ko.unwrap(target));
+}
+
 // Observable array and object items
 //
 // @param {Array} data
@@ -57,6 +61,23 @@ export function observableObject(data) {
     });
 
     return data;
+};
+
+// Link array observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+export function linkArrayObservable(observable, validator) {
+    return;
+};
+
+
+// Link object observable with validators
+//
+// @param {Object} data
+// @param {Object} validators
+export function linkObjectObservable(data, validators) {
+    return;
 };
 
 // Run validator on given prop
@@ -224,7 +245,8 @@ export function observable(data, validators) {
         const validResult = {};
 
         validObject('data', data, validResult, validators);
-        observableObject(validResult);
+        linkObjectObservable(validResult);
+        observableObject(validResult, validators);
 
         return validResult['data'];
     }

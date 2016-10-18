@@ -58,9 +58,7 @@ describe('avatar', () => {
     it('should create methods', () => {
         const vm = ko.components.querySelector('avatar');
 
-        expect(typeof vm.ready === 'function').toBe(true);
         expect(typeof vm.rename === 'function').toBe(true);
-        expect(vm.hasOwnProperty('ready')).toBe(false);
         expect(vm.hasOwnProperty('rename')).toBe(false);
     });
 
@@ -90,7 +88,7 @@ describe('avatar', () => {
         const html  = avatar.innerHTML.trim().replace(/[\n\s]+/g, '');
         const template = Avatar.template.trim().replace(/[\n\s]+/g, '');
 
-        expect(html).toBe(template);
+        expect(html.indexOf(template) > -1).toBe(true);
     });
 
     it('should binding default value', () => {

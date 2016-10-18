@@ -69,22 +69,6 @@ export function getElementsByClassName(selector, context = document) {
     });
 };
 
-// ref vm
-//
-// @param {String} query
-// @param {Node} context
-export function ref(query, context) {
-    return ko.components.querySelector(query, context || this.componentInfo.element);
-};
-
-// ref vms
-//
-// @param {String} query
-// @param {Node} context
-export function refs(query, context) {
-    return ko.components.querySelectorAll(query, context || this.componentInfo.element);
-};
-
 // extend ko.components
 ko.components.querySelector = querySelector;
 ko.components.querySelectorAll = querySelectorAll;

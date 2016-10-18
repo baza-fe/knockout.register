@@ -1,7 +1,5 @@
 import pluck from './pluck';
 import {
-    ref,
-    refs,
     noop,
     mixin,
     observable,
@@ -36,11 +34,7 @@ function transform(module) {
     } = Object.assign({}, modulePolyfill, module);
 
     insertCss(module.style);
-    Object.assign(constructor.prototype, {
-        ref,
-        refs,
-        ready: noop
-    }, methods);
+    Object.assign(constructor.prototype, methods);
 
     return {
         viewModel: {
