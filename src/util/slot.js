@@ -4,7 +4,7 @@ import {
     isString
 } from './';
 
-function isNode(target) {
+function isNode(target, name) {
     const nodeName = (target && target.nodeName) ?
         target.nodeName.toLowerCase() : '';
 
