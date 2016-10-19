@@ -411,7 +411,7 @@ ko.components.getElementsByClassName = getElementsByClassName;
 
 var hasConsole = !!window.console;
 
-function warn(msg, extra) {
+function error(msg, extra) {
      hasConsole && console.error(msg, extra);
 }
 
@@ -647,13 +647,19 @@ function validProp$$1(propName, propValue, data, validator) {
         computedPropValue = propValue;
     }
 
+    var isUndefined = computedPropValue === undefined;
+
     // required
-    if (computedPropValue === undefined && required) {
-        warn('Invalid prop: Missing required prop: ' + propName, data);
+    if (isUndefined && required) {
+        error('Invalid prop: Missing required prop: ' + propName, data);
         return false;
-    } else if (!validator(computedPropValue)) {
+    } else if (!isUndefined && !validator(computedPropValue)) {
+        error('Invalid prop: key: ' + propName + ', propValue: ' + computedPropValue, data);
+        return false;
+    } else if (isUndefined) {
         warn('Invalid prop: key: ' + propName + ', propValue: ' + computedPropValue, data);
-        return false;
+        data[propName] = undefined;
+        return true;
     } else {
         data[propName] = propValue;
         return true;
@@ -691,7 +697,7 @@ function validObject$$1(propName, propValue, data, validators) {
                 return validArray$$1(subPropName, subPropValue, resultObject, subValidator[0]);
             }
         } else {
-            warn('Invalid validator: ' + validator, resultObject);
+            error('Invalid validator: ' + validator, resultObject);
             return false;
         }
     });
@@ -741,7 +747,7 @@ function validArray$$1(propName, propValue, data, validator) {
             validMethod = validArray$$1;
         }
     } else {
-        warn('Invalid validator: ' + validator, data);
+        error('Invalid validator: ' + validator, data);
         return false;
     }
 
@@ -761,7 +767,7 @@ function validArray$$1(propName, propValue, data, validator) {
 // @param {Object} validators
 function valid$$1(data, validators) {
     if (!isObject$1(data) || data === null) {
-        warn('Invalid props: ' + data);
+        error('Invalid props: ' + data);
         return null;
     } else {
         var validData = {};
@@ -784,8 +790,6 @@ function isArrayObservable(target) {
 // @param {Function} observable
 // @param {Object|Function} validator
 function linkArrayObservable$$1(observable, validator) {
-    var _arguments = arguments;
-
     if (!isArrayObservable(observable) || observable[linkedLabel$$1]) {
         return;
     }
@@ -819,12 +823,12 @@ function linkArrayObservable$$1(observable, validator) {
     };
 
     observable.splice = function () {
-        if (_arguments.length < 3) {
+        if (arguments.length < 3) {
             return;
         }
 
-        var args = [_arguments[0], _arguments[1]];
-        var result = every(toArray(_arguments, 2), function (item, i) {
+        var args = [arguments[0], arguments[1]];
+        var result = every(toArray(arguments, 2), function (item, i) {
             var subValidResult = {};
             var subResult = validArray$$1('splice', [item], subValidResult, validator);
 
@@ -1001,11 +1005,12 @@ function is(constructor) {
     };
 }
 
+var isNode$1 = is(Node);
+var isElement = is(Element);
+
 var validators = {
 
-    // basic types run validator immediately
-    // true valid
-    // false invalid
+    // basic type validators
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
@@ -1014,9 +1019,23 @@ var validators = {
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
+    Node: isNode$1,
+    Element: isElement,
+
+    // basic type validators with default value
+    string: { type: isString, default: '' },
+    number: { type: isNumber, default: 0 },
+    boolean: { type: isBoolean, default: false },
+    object: { type: isObject$1, default: {} },
+    array: { type: isArray$1, default: [] },
+    function: { type: isFunction, default: noop },
+    date: { type: isDate, default: new Date() },
+    regexp: { type: isRegExp, default: null },
+    node: { type: isNode$1, default: null },
+    element: { type: isElement, default: null },
+
+    // basic type advance validators
     instanceof: is,
-    Node: is(Node),
-    Element: is(Element),
     any: function any(actual) {
         return actual !== null && actual !== undefined;
     },
@@ -1031,9 +1050,9 @@ var validators = {
     },
 
 
-    // combination types not run validator immediately
-    // [ ... ] List of validators at least fullfill one validator
-    // { ... } Validators in { key: validator } pair all validators need to fullfill
+    // combination type validators
+    // => [ ... ] List of validators at least fullfill one validator
+    // => { ... } Validators in { key: validator } pair all validators need to fullfill
 
     // Construct shape validators
     //
@@ -1109,7 +1128,7 @@ function transform(module) {
 
                 if (props) {
                     var validOpts = valid$$1(opts, props);
-                    linkObjectObservable$$1(validOpts, props);
+                    // linkObjectObservable(validOpts, props);
                     observableObject$$1(validOpts);
                     extend(vm, validOpts);
                 }
