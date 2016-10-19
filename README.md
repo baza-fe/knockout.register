@@ -122,7 +122,7 @@ The validator can be a custom function, native constructors or combination:
 export default {
     props: {
 
-        // basic type checker
+        // basic validator
         optionalString: ko.types.String,
         optionalNumber: ko.types.Number,
         optionalBoolean: ko.types.Boolean,
@@ -135,8 +135,21 @@ export default {
         optionalElement: ko.types.Element,
         optionalAny: ko.types.any,
         optionalUser: ko.types.instanceof(User),
+        optionalEnum: ko.types.oneOf('button', 'submit', 'reset'),
 
-        // combination type checker
+        // basic validator with default
+        optionalStringWithDefault: ko.types.string, // default: ''
+        optionalNumberWithDefault: ko.types.number, // default: 0
+        optionalBooleanWithDefault: ko.types.boolean, // default: false
+        optionalObjectWithDefault: ko.types.object, // default: {}
+        optionalArrayWithDefault: ko.types.array, // default: []
+        optionalFunctionWithDefault: ko.types.function, // default: noop
+        optionalDateWithDefault: ko.types.date, // default: new Date()
+        optionalRegExpWithDefault: ko.types.regexp, // default: null
+        optionalNodeWithDefault: ko.types.node, // default: null
+        optionalElementWithDefault: ko.types.element, // default: null
+
+        // combination validator
         optionalObjectWithShape: {
             optionalString: ko.types.String,
             optionalNumber: ko.types.Number,
@@ -149,7 +162,6 @@ export default {
                 boolean: ko.types.Boolea
             })
         ),
-        optionalEnum: ko.types.oneOf('button', 'submit', 'reset'),
         optionalUnion: ko.types.oneOfType(
             ko.types.String,
             ko.types.Number,

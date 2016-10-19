@@ -5,7 +5,7 @@ import {
     isArray,
     isFunction,
     hasOwn,
-    warn
+    error
 } from './index';
 
 // Run validator on given prop
@@ -29,13 +29,19 @@ export function validProp(propName, propValue, data, validator) {
         computedPropValue = propValue;
     }
 
+    const isUndefined = computedPropValue === undefined;
+
     // required
-    if (computedPropValue === undefined && required) {
-        warn(`Invalid prop: Missing required prop: ${propName}`, data);
+    if (isUndefined && required) {
+        error(`Invalid prop: Missing required prop: ${propName}`, data);
         return false;
-    } else if (!validator(computedPropValue)) {
+    } else if (!isUndefined && !validator(computedPropValue)) {
+        error(`Invalid prop: key: ${propName}, propValue: ${computedPropValue}`, data);
+        return false;
+    } else if (isUndefined) {
         warn(`Invalid prop: key: ${propName}, propValue: ${computedPropValue}`, data);
-        return false;
+        data[propName] = undefined;
+        return true;
     } else {
         data[propName] = propValue;
         return true;
@@ -93,7 +99,7 @@ export function validObject(propName, propValue, data, validators) {
                 );
             }
         } else {
-            warn(`Invalid validator: ${validator}`, resultObject);
+            error(`Invalid validator: ${validator}`, resultObject);
             return false;
         }
     });
@@ -145,7 +151,7 @@ export function validArray(propName, propValue, data, validator) {
             validMethod = validArray;
         }
     } else {
-        warn(`Invalid validator: ${validator}`, data);
+        error(`Invalid validator: ${validator}`, data);
         return false;
     }
 
@@ -167,7 +173,7 @@ export function validArray(propName, propValue, data, validator) {
 // @param {Object} validators
 export function valid(data, validators) {
     if (!isObject(data) || data === null) {
-        warn(`Invalid props: ${data}`);
+        error(`Invalid props: ${data}`);
         return null;
     } else {
         const validData = {};

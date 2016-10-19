@@ -1,7 +1,14 @@
+import {
+    noop,
+    isArray,
+    isDate,
+    isObject,
+    isFunction
+} from '../../src/util/';
+
 const node = document.createElement('div');
 const now = new Date();
 const regexp = /\w/img;
-const noop = function () {};
 const array = [];
 const object = {};
 
@@ -44,7 +51,6 @@ describe('Number', () => {
         expect(ko.types.Number(node)).toBe(false);
     });
 });
-
 
 describe('Boolean', () => {
     it('should return true', () => {
@@ -164,6 +170,44 @@ describe('RegExp', () => {
     });
 });
 
+describe('Node', () => {
+    it('should return true', () => {
+        expect(ko.types.Node(node)).toBe(true);
+    });
+
+    it('should return false', () => {
+        expect(ko.types.Node('')).toBe(false);
+        expect(ko.types.Node(1)).toBe(false);
+        expect(ko.types.Node(true)).toBe(false);
+        expect(ko.types.Node(false)).toBe(false);
+        expect(ko.types.Node(array)).toBe(false);
+        expect(ko.types.Node(object)).toBe(false);
+        expect(ko.types.Node(now)).toBe(false);
+        expect(ko.types.Node(regexp)).toBe(false);
+        expect(ko.types.Node(null)).toBe(false);
+        expect(ko.types.Node(undefined)).toBe(false);
+    });
+});
+
+describe('Element', () => {
+    it('should return true', () => {
+        expect(ko.types.Element(node)).toBe(true);
+    });
+
+    it('should return false', () => {
+        expect(ko.types.Element('')).toBe(false);
+        expect(ko.types.Element(1)).toBe(false);
+        expect(ko.types.Element(true)).toBe(false);
+        expect(ko.types.Element(false)).toBe(false);
+        expect(ko.types.Element(array)).toBe(false);
+        expect(ko.types.Element(object)).toBe(false);
+        expect(ko.types.Element(now)).toBe(false);
+        expect(ko.types.Element(regexp)).toBe(false);
+        expect(ko.types.Element(null)).toBe(false);
+        expect(ko.types.Element(undefined)).toBe(false);
+    });
+});
+
 describe('any', () => {
     it('should return true', () => {
         expect(ko.types.any('')).toBe(true);
@@ -206,40 +250,71 @@ describe('instanceof', () => {
     });
 });
 
-describe('Node', () => {
-    it('should return true', () => {
-        expect(ko.types.Node(node)).toBe(true);
+describe('isRequired', () => {
+    it('should create correct type', () => {
+        expect(ko.types.string.type).toBe(ko.types.String);
+        expect(ko.types.number.type).toBe(ko.types.Number);
+        expect(ko.types.boolean.type).toBe(ko.types.Boolean);
+        expect(ko.types.object.type).toBe(ko.types.Object);
+        expect(ko.types.array.type).toBe(ko.types.Array);
+        expect(ko.types.function.type).toBe(ko.types.Function);
+        expect(ko.types.date.type).toBe(ko.types.Date);
+        expect(ko.types.regexp.type).toBe(ko.types.RegExp);
+        expect(ko.types.node.type).toBe(ko.types.Node);
+        expect(ko.types.element.type).toBe(ko.types.Element);
     });
 
-    it('should return false', () => {
-        expect(ko.types.Node('')).toBe(false);
-        expect(ko.types.Node(1)).toBe(false);
-        expect(ko.types.Node(true)).toBe(false);
-        expect(ko.types.Node(false)).toBe(false);
-        expect(ko.types.Node(array)).toBe(false);
-        expect(ko.types.Node(object)).toBe(false);
-        expect(ko.types.Node(now)).toBe(false);
-        expect(ko.types.Node(regexp)).toBe(false);
-        expect(ko.types.Node(null)).toBe(false);
-        expect(ko.types.Node(undefined)).toBe(false);
+    it('should create corrent default', () => {
+        expect(ko.types.string.default).toBe('');
+        expect(ko.types.number.default).toBe(0);
+        expect(ko.types.boolean.default).toBe(false);
+        expect(isObject(ko.types.object.default)).toBe(true);
+        expect(isArray(ko.types.array.default)).toBe(true);
+        expect(isFunction(ko.types.function.default)).toBe(true);
+        expect(isDate(ko.types.date.default)).toBe(true);
+        expect(ko.types.regexp.default).toBe(null);
+        expect(ko.types.node.default).toBe(null);
+        expect(ko.types.element.default).toBe(null);
     });
 });
 
-describe('Element', () => {
-    it('should return true', () => {
-        expect(ko.types.Element(node)).toBe(true);
+describe('shape', () => {
+    const shape = ko.types.shape({
+        string: ko.types.String,
+        number: ko.types.Number,
+        boolean: ko.types.Boolean
     });
 
-    it('should return false', () => {
-        expect(ko.types.Element('')).toBe(false);
-        expect(ko.types.Element(1)).toBe(false);
-        expect(ko.types.Element(true)).toBe(false);
-        expect(ko.types.Element(false)).toBe(false);
-        expect(ko.types.Element(array)).toBe(false);
-        expect(ko.types.Element(object)).toBe(false);
-        expect(ko.types.Element(now)).toBe(false);
-        expect(ko.types.Element(regexp)).toBe(false);
-        expect(ko.types.Element(null)).toBe(false);
-        expect(ko.types.Element(undefined)).toBe(false);
+    it('should return true', () => {
+        expect(isObject(shape)).toBe(true);
+        expect(shape.string).toBe(ko.types.String);
+        expect(shape.number).toBe(ko.types.Number);
+        expect(shape.boolean).toBe(ko.types.Boolean);
+    });
+});
+
+describe('arrayOf', () => {
+    const arrayOf = ko.types.arrayOf(ko.types.String);
+
+    it('should return true', () => {
+        expect(isArray(arrayOf)).toBe(true);
+        expect(arrayOf.length).toBe(1);
+        expect(arrayOf[0]).toBe(ko.types.String);
+    });
+});
+
+describe('oneOfType', () => {
+    const oneOfType = ko.types.oneOfType(
+        ko.types.String,
+        ko.types.Number,
+        ko.types.Boolean
+    );
+
+    it('should return true', () => {
+        expect(isArray(oneOfType)).toBe(true);
+        expect(oneOfType.length).toBe(3);
+        expect(oneOfType[0]).toBe(ko.types.String);
+        expect(oneOfType[1]).toBe(ko.types.Number);
+        expect(oneOfType[2]).toBe(ko.types.Boolean);
     });
 });

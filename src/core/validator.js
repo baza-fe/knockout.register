@@ -1,5 +1,6 @@
 import {
     some,
+    noop,
     toArray,
     eachDict,
     isString,
@@ -19,11 +20,22 @@ function is(constructor) {
     };
 }
 
+function isRequired(validator, defaultValue) {
+    return (required = false) => {
+        return {
+            type: validator,
+            default: defaultValue,
+            required: required
+        };
+    };
+}
+
+const isNode = is(Node);
+const isElement = is(Element);
+
 const validators = {
 
-    // basic types run validator immediately
-    // true valid
-    // false invalid
+    // basic type validators
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
@@ -32,9 +44,23 @@ const validators = {
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
+    Node: isNode,
+    Element: isElement,
+
+    // basic type validators with default value
+    string: { type: isString, default: '' },
+    number: { type: isNumber, default: 0 },
+    boolean: { type: isBoolean, default: false },
+    object: { type: isObject, default: {} },
+    array: { type: isArray, default: [] },
+    function: { type: isFunction, default: noop },
+    date: { type: isDate, default: new Date() },
+    regexp: { type: isRegExp, default: null },
+    node: { type: isNode, default: null },
+    element: { type: isElement, default: null },
+
+    // basic type advance validators
     instanceof: is,
-    Node: is(Node),
-    Element: is(Element),
     any(actual) {
         return actual !== null && actual !== undefined;
     },
@@ -48,9 +74,9 @@ const validators = {
         };
     },
 
-    // combination types not run validator immediately
-    // [ ... ] List of validators at least fullfill one validator
-    // { ... } Validators in { key: validator } pair all validators need to fullfill
+    // combination type validators
+    // => [ ... ] List of validators at least fullfill one validator
+    // => { ... } Validators in { key: validator } pair all validators need to fullfill
 
     // Construct shape validators
     //

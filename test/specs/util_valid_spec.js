@@ -75,6 +75,10 @@ describe('validProp', () => {
         expect(validProp(string, undefined, data, { type: ko.types.String, required: true })).toBe(false);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: Missing required prop: string', data);
     });
+
+    it('should log warnning: Invalid prop', () => {
+        return true;
+    });
 });
 
 describe('validObject', () => {
@@ -106,6 +110,10 @@ describe('validObject', () => {
         spyOn(console, 'error');
         validObject(string, ob, data, shape);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: p1, propValue: 1', data.string);
+    });
+
+    it('should log warnning: Invalid prop', () => {
+        return true;
     });
 });
 
@@ -150,6 +158,10 @@ describe('validWithin', () => {
         spyOn(console, 'error');
         validWithin(string, ob, data, oneOfType);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: null', []);
+    });
+
+    it('should log warnning: Invalid prop', () => {
+        return true;
     });
 });
 
@@ -220,6 +232,10 @@ describe('validArray', () => {
         spyOn(console, 'error');
         validArray(string, ob, data, arrayOfString[0]);
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, propValue: 1', data.string);
+    });
+
+    it('should log warnning: Invalid prop', () => {
+        return true;
     });
 });
 

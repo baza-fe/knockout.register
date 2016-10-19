@@ -58,7 +58,7 @@ function transform(module) {
 
                 if (props) {
                     let validOpts = valid(opts, props);
-                    linkObjectObservable(validOpts, props);
+                    // linkObjectObservable(validOpts, props);
                     observableObject(validOpts);
                     extend(vm, validOpts);
                 }
