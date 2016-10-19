@@ -5,6 +5,7 @@ import {
     isArray,
     isFunction,
     hasOwn,
+    warn,
     error
 } from './index';
 
