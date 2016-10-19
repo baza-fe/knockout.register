@@ -415,6 +415,10 @@ function error(msg, extra) {
      hasConsole && console.error(msg, extra);
 }
 
+function warn(msg, extra) {
+     hasConsole && console.warn(msg, extra);
+}
+
 // Pluck dom node from given template
 //
 // @param {Array|String|Node} tpl
