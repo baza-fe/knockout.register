@@ -1,4 +1,6 @@
-import { eachDict } from './lang';
+import {
+    eachDict
+} from './lang';
 
 // create computed observalbes on context
 //

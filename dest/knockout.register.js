@@ -1,5 +1,5 @@
 this.knockout = this.knockout || {};
-(function (exports) {
+(function () {
 'use strict';
 
 var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
@@ -7,9 +7,14 @@ var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 // no-ops function
 function noop() {}
 
+// has own property
+function hasOwn(target, key) {
+    return target.hasOwnProperty(key);
+}
+
 // has own property and not falsy value
 function exist(target, key) {
-    return target[key] && target.hasOwnProperty(key);
+    return target[key] && hasOwn(target, key);
 }
 
 // my-name => myName
@@ -19,15 +24,22 @@ function normalize(name) {
     }).join('');
 }
 
-// function type checker
-function isFunction(target) {
-    return typeof target === 'function';
+// type checker
+function isType(name) {
+    return function (real) {
+        return Object.prototype.toString.call(real) === '[object ' + name + ']';
+    };
 }
 
-// string type checker
-function isString(target) {
-    return typeof target === 'string';
-}
+// type checkers
+var isString = isType('String');
+var isNumber = isType('Number');
+var isBoolean = isType('Boolean');
+var isObject$1 = isType('Object');
+var isArray$1 = isType('Array');
+var isFunction = isType('Function');
+var isDate = isType('Date');
+var isRegExp = isType('RegExp');
 
 // parse to string to primitive value
 //
@@ -53,7 +65,79 @@ function toPrimitive(value) {
     }
 }
 
-// iterate dict with given iterator
+// transform array like object to real array
+//
+// @param {Object} target
+// @return {Array}
+function toArray(target) {
+    var start = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+    var i = target.length - start;
+    var result = new Array(i);
+
+    while (i--) {
+        result[i] = target[i + start];
+    }
+
+    return result;
+}
+
+// iterate array or array like object
+//
+// @param {Array|Object} target
+// @param {Function} iterator
+function each(target, iterator) {
+    var i = void 0,
+        len = void 0;
+
+    for (i = 0, len = target.length; i < len; i += 1) {
+        if (iterator(target[i], i, target) === false) {
+            return;
+        }
+    }
+}
+
+// iterate array or array like object and check those items some true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+function some(target, checker) {
+    var result = false;
+
+    each(target, function (item, i) {
+        if (checker(item, i, target)) {
+            result = true;
+            return false;
+        }
+    });
+
+    return result;
+}
+
+// iterate array or array like object and check those items all true
+//
+// @param {Array|Object} target
+// @param {Function} checker
+// @return {Boolean}
+function every(target, checker) {
+    if (!target || !target.length) {
+        return false;
+    }
+
+    var result = true;
+
+    each(target, function (item, i) {
+        if (!checker(item, i, target)) {
+            result = false;
+            return false;
+        }
+    });
+
+    return result;
+}
+
+// iterate dict
 //
 // @param {Object} dict
 // @param {Function} iterator
@@ -62,9 +146,31 @@ function eachDict(dict, iterator) {
         return;
     }
 
-    ko.utils.arrayForEach(Object.keys(dict), function (key) {
-        iterator(key, dict[key], dict);
+    each(Object.keys(dict), function (key) {
+        if (iterator(key, dict[key], dict) === false) {
+            return;
+        }
     });
+}
+
+// extend dict
+//
+// @param {Obejct} target
+// @param {Obejct} dict
+// @return {Object} target
+function extend(target, dict) {
+    if (!dict) {
+        return target;
+    }
+
+    var keys = Object.keys(dict);
+    var i = keys.length;
+
+    while (i--) {
+        target[keys[i]] = dict[keys[i]];
+    }
+
+    return target;
 }
 
 function apply(selector, contextNode) {
@@ -148,7 +254,7 @@ module.exports = function (css, options) {
 var insert = interopDefault(index);
 
 // empty component template
-var emptyTemplate = '<!-- empty template -->';
+var emptyTemplate = '<noscript><!-- empty template --></noscript>';
 
 // throw error with plugin name
 //
@@ -216,6 +322,10 @@ ko.utils.insertCss = ko.utils.insertCss || insertCss;
 var defaultSpy = document.createComment('spy');
 
 function getVmForNode(node) {
+    if (!node) {
+        return null;
+    }
+
     var spy = node.lastElementChild || defaultSpy;
     var useDefault = spy === defaultSpy;
 
@@ -292,22 +402,6 @@ function getElementsByClassName(selector) {
     });
 }
 
-// ref vm
-//
-// @param {String} query
-// @param {Node} context
-function ref(query, context) {
-    return ko.components.querySelector(query, context || this.componentInfo.element);
-}
-
-// ref vms
-//
-// @param {String} query
-// @param {Node} context
-function refs(query, context) {
-    return ko.components.querySelectorAll(query, context || this.componentInfo.element);
-}
-
 // extend ko.components
 ko.components.querySelector = querySelector;
 ko.components.querySelectorAll = querySelectorAll;
@@ -315,209 +409,137 @@ ko.components.getElementById = getElementById;
 ko.components.getElementsByTagName = getElementsByTagName;
 ko.components.getElementsByClassName = getElementsByClassName;
 
-var asyncGenerator = function () {
-  function AwaitValue(value) {
-    this.value = value;
-  }
+var hasConsole = !!window.console;
 
-  function AsyncGenerator(gen) {
-    var front, back;
+function error(msg) {
+     hasConsole && console.error(msg);
+}
 
-    function send(key, arg) {
-      return new Promise(function (resolve, reject) {
-        var request = {
-          key: key,
-          arg: arg,
-          resolve: resolve,
-          reject: reject,
-          next: null
+function warn(msg) {
+     hasConsole && console.warn(msg);
+}
+
+// Pluck dom node from given template
+//
+// @param {Array|String|Node} tpl
+function pluckNodes(tpl) {
+    if (isArray$1(tpl)) {
+        return tpl;
+    }
+
+    if (isString(tpl)) {
+        return ko.utils.parseHtmlFragment(tpl);
+    }
+
+    if (tpl.nodeType === Node.ELEMENT_NODE) {
+        return [tpl];
+    }
+}
+
+// Pluck slot node from given node list
+//
+// @param {Array} nodes
+function pluckSlots(nodes) {
+    var slots = [];
+
+    each(nodes, function (node) {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return;
+        }
+
+        if (isNode(node, 'slot')) {
+            slots.push(node);
+        } else {
+            each(node.getElementsByTagName('slot'), function (slot$$1) {
+                slots.push(slot$$1);
+            });
+        }
+    });
+
+    return slots;
+}
+
+// Pair slots according to name
+//
+// @param {Array} srcSlots
+// @param {Array} destSlots
+function matchSlots(srcSlots, destSlots) {
+    var slotMaps = {};
+    var slotPairs = [];
+    var srcSlotsLen = srcSlots.length;
+
+    each(srcSlots.concat(destSlots), function (slot$$1, i) {
+        var slotName = slot$$1.getAttribute('name');
+        var slotMap = slotMaps[slotName] = slotMaps[slotName] || {
+            src: null,
+            dest: []
         };
 
-        if (back) {
-          back = back.next = request;
+        if (i < srcSlotsLen) {
+            slotMap.src = slot$$1;
         } else {
-          front = back = request;
-          resume(key, arg);
+            slotMap.dest.push(slot$$1);
         }
-      });
-    }
+    });
 
-    function resume(key, arg) {
-      try {
-        var result = gen[key](arg);
-        var value = result.value;
+    var slotNames = Object.keys(slotMaps);
 
-        if (value instanceof AwaitValue) {
-          Promise.resolve(value.value).then(function (arg) {
-            resume("next", arg);
-          }, function (arg) {
-            resume("throw", arg);
-          });
-        } else {
-          settle(result.done ? "return" : "normal", result.value);
+    each(slotNames, function (slotName) {
+        var slotMap = slotMaps[slotName];
+
+        if (!slotMap.src || !slotMap.dest.length) {
+            return;
         }
-      } catch (err) {
-        settle("throw", err);
-      }
-    }
 
-    function settle(type, value) {
-      switch (type) {
-        case "return":
-          front.resolve({
-            value: value,
-            done: true
-          });
-          break;
+        each(slotMap.dest, function (destSlot) {
+            slotPairs.push({
+                name: slotName,
+                src: slotMap.src,
+                dest: destSlot
+            });
+        });
+    });
 
-        case "throw":
-          front.reject(value);
-          break;
+    return slotPairs;
+}
 
-        default:
-          front.resolve({
-            value: value,
-            done: false
-          });
-          break;
-      }
-
-      front = front.next;
-
-      if (front) {
-        resume(front.key, front.arg);
-      } else {
-        back = null;
-      }
-    }
-
-    this._invoke = send;
-
-    if (typeof gen.return !== "function") {
-      this.return = undefined;
-    }
-  }
-
-  if (typeof Symbol === "function" && Symbol.asyncIterator) {
-    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
-      return this;
-    };
-  }
-
-  AsyncGenerator.prototype.next = function (arg) {
-    return this._invoke("next", arg);
-  };
-
-  AsyncGenerator.prototype.throw = function (arg) {
-    return this._invoke("throw", arg);
-  };
-
-  AsyncGenerator.prototype.return = function (arg) {
-    return this._invoke("return", arg);
-  };
-
-  return {
-    wrap: function (fn) {
-      return function () {
-        return new AsyncGenerator(fn.apply(this, arguments));
-      };
-    },
-    await: function (value) {
-      return new AwaitValue(value);
-    }
-  };
-}();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-var _extends = Object.assign || function (target) {
-  for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i];
-
-    for (var key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        target[key] = source[key];
-      }
-    }
-  }
-
-  return target;
-};
-
-var get = function get(object, property, receiver) {
-  if (object === null) object = Function.prototype;
-  var desc = Object.getOwnPropertyDescriptor(object, property);
-
-  if (desc === undefined) {
-    var parent = Object.getPrototypeOf(object);
-
-    if (parent === null) {
-      return undefined;
+// Replace dest slot into source slot according to name
+//
+// @param {Array} srcSlots
+// @param {Array} destSlots
+function replaceSlot(srcSlot, destSlot) {
+    if (srcSlot && destSlot) {
+        destSlot.parentNode.replaceChild(srcSlot.cloneNode(true), destSlot);
     } else {
-      return get(parent, property, receiver);
+        srcSlot.parentNode.removeChild(srcSlot);
+        destSlot.parentNode.removeChild(detSlot);
     }
-  } else if ("value" in desc) {
-    return desc.value;
-  } else {
-    var getter = desc.get;
+}
 
-    if (getter === undefined) {
-      return undefined;
-    }
+function slot$$1(srcTpl, destTpl) {
+    var srcNodes = pluckNodes(srcTpl);
+    var destNodes = pluckNodes(destTpl);
+    var srcSlots = pluckSlots(srcNodes);
+    var destSlots = pluckSlots(destNodes);
+    var slotPairs = matchSlots(srcSlots, destSlots);
 
-    return getter.call(receiver);
-  }
-};
+    each(slotPairs, function (slotPair) {
+        replaceSlot(slotPair.src, slotPair.dest);
+    });
 
+    return srcNodes;
+}
 
+// Check dom node by name
+//
+// @param {Node} target
+// @param {String} name
+// @return {Boolean}
+function isNode(target, name) {
+    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-var set = function set(object, property, value, receiver) {
-  var desc = Object.getOwnPropertyDescriptor(object, property);
-
-  if (desc === undefined) {
-    var parent = Object.getPrototypeOf(object);
-
-    if (parent !== null) {
-      set(parent, property, value, receiver);
-    }
-  } else if ("value" in desc && desc.writable) {
-    desc.value = value;
-  } else {
-    var setter = desc.set;
-
-    if (setter !== undefined) {
-      setter.call(receiver, value);
-    }
-  }
-
-  return value;
-};
+    return nodeName === name;
+}
 
 var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
 var observableAttrNameRE = /^k-([\w\-]+)/i;
@@ -571,7 +593,7 @@ function pluckEventParams(bindingContext, bindingString) {
     return handlerParams;
 }
 
-function pluck(node) {
+function pluck$$1(node) {
     var bindingContext = null;
     var observableBindingStringList = [];
     var eventBindingStringList = [];
@@ -602,11 +624,507 @@ function pluck(node) {
         bindingContext = ko.contextFor(node);
     }
 
-    return _extends(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString), observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
+    extend(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString));
+    extend(result, observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
+
+    return result;
 }
 
+function is(constructor) {
+    return function (actual) {
+        return actual instanceof constructor;
+    };
+}
+
+var isNode$1 = is(Node);
+var isElement = is(Element);
+
+ko.types = ko.types || {
+
+    // basic type validators
+    String: isString,
+    Number: isNumber,
+    Boolean: isBoolean,
+    Object: isObject$1,
+    Array: isArray$1,
+    Function: isFunction,
+    Date: isDate,
+    RegExp: isRegExp,
+    Node: isNode$1,
+    Element: isElement,
+
+    // basic type validators with default value
+    string: { type: isString, default: '' },
+    number: { type: isNumber, default: 0 },
+    boolean: { type: isBoolean, default: false },
+    object: { type: isObject$1, default: {} },
+    array: { type: isArray$1, default: [] },
+    function: { type: isFunction, default: noop },
+    date: { type: isDate, default: new Date() },
+    regexp: { type: isRegExp, default: null },
+    node: { type: isNode$1, default: null },
+    element: { type: isElement, default: null },
+
+    // basic type advance validators
+    instanceof: is,
+    any: function any(actual) {
+        return actual !== null && actual !== undefined;
+    },
+    oneOf: function oneOf() {
+        var enums = toArray(arguments);
+        var validator = function validator(actual) {
+            return some(enums, function (expected) {
+                return actual === expected;
+            });
+        };
+
+        // for define validator name
+        validator.__type_name = 'ko.types.oneOf';
+
+        return validator;
+    },
+
+
+    // combination type validators
+    // => [ ... ] List of validators at least fullfill one validator
+    // => { ... } Validators in { key: validator } pair all validators need to fullfill
+
+    // Construct shape validators
+    //
+    // @param {Object} plan
+    // @return {Object}
+    shape: function shape(plan) {
+        return plan;
+    },
+
+
+    // Construct array validators
+    //
+    // @param {Function} validator
+    // @return {Array}
+    arrayOf: function arrayOf(validator) {
+        return [validator];
+    },
+
+
+    // Construct type validators
+    //
+    // @param {Function...}
+    // @return {Array}
+    oneOfType: function oneOfType() {
+        return arguments.length > 1 ? toArray(arguments) : arguments[0];
+    }
+};
+
+var buildInValidators = Object.keys(ko.types);
+
+// Get validator
+//
+// @param {Any} validator
+// @return {ANy}
+function defineValidator(validator) {
+    return isObject$1(validator) && hasOwn(validator, 'type') ? validator.type : validator;
+}
+
+// Get validator name
+//
+// @param {Any} validator
+// @return {String}
+function defineValidatorName(validator) {
+    var name = '';
+    var computedValidator = defineValidator(validator);
+
+    if (isArray$1(computedValidator)) {
+        name = computedValidator.length === 1 ? 'arrayOf' : 'oneOfType';
+    } else if (isObject$1(computedValidator)) {
+        name = 'shape';
+    } else {
+        each(buildInValidators, function (key) {
+            if (validator === ko.types[key]) {
+                name = key;
+                return false;
+            }
+        });
+    }
+
+    return name ? 'ko.types.' + name : isFunction(validator) ? validator.__type_name || validator.name || 'custom' : validator;
+}
+
+// Run validator on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Object|Function} validator
+// @return {Boolean}
+function validProp$$1(propName, propValue, data, validator) {
+    var isWrapped = isObject$1(validator);
+    var isObservable = ko.isObservable(propValue);
+    var required = isWrapped ? validator.required : false;
+    var defaultValue = isWrapped ? validator.default : undefined;
+
+    var computedPropValue = ko.unwrap(propValue);
+    var computedValidator = isWrapped ? validator.type : validator;
+
+    if (!isObservable) {
+        propValue = propValue === undefined ? defaultValue : propValue;
+        computedPropValue = propValue;
+    }
+
+    var isUndefined = computedPropValue === undefined;
+    var validatorName = defineValidatorName(computedValidator);
+
+    // required
+    if (isUndefined && required) {
+        error('Invalid prop: Missing required prop: ' + propName);
+        return false;
+    } else if (!isUndefined && !computedValidator(computedPropValue)) {
+        error('Invalid prop: key: ' + propName + ', expect: ' + validatorName + ', actual: ' + computedPropValue);
+        return false;
+    } else if (isUndefined) {
+        warn('Need prop: key: ' + propName + ', expect: ' + validatorName + ', actual: ' + computedPropValue);
+        data[propName] = undefined;
+        return true;
+    } else {
+        data[propName] = propValue;
+        return true;
+    }
+}
+
+// Run object validators on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Object} validators
+// @return {Boolean}
+function validObject$$1(propName, propValue, data, validators) {
+    var computedPropValue = ko.unwrap(propValue);
+    var resultObject = {};
+    var result = every(Object.keys(validators), function (subPropName) {
+        var validator = validators[subPropName];
+        var subPropValue = computedPropValue ? computedPropValue[subPropName] : undefined;
+
+        if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+            return validProp$$1(subPropName, subPropValue, resultObject, validator);
+        } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+            return validObject$$1(subPropName, subPropValue, resultObject, validator);
+        } else if (isArray$1(validator) || isArray$1(validator.type)) {
+            var subValidator = validator.type ? validator.type : validator;
+            var len = subValidator.length;
+
+            // oneOfType
+            if (len > 1) {
+                return validWithin$$1(subPropName, subPropValue, resultObject, subValidator);
+
+                // arrayOf
+            } else {
+                return validArray$$1(subPropName, subPropValue, resultObject, subValidator[0]);
+            }
+        } else {
+            error('Invalid validator: ' + validator);
+            return false;
+        }
+    });
+
+    data[propName] = result && ko.isObservable(propValue) ? propValue : resultObject;
+
+    return result;
+}
+
+// Run validators on given prop
+//
+// @param {String} propName
+// @param {Any} propValue
+// @param {Object} data
+// @param {Array} validators
+// @return {Boolean}
+function validWithin$$1(propName, propValue, data, validators) {
+    var computedPropValue = ko.unwrap(propValue);
+    var result = some(validators, function (validator) {
+        return validArray$$1(propName, [computedPropValue], {}, validator);
+    });
+
+    data[propName] = result ? propValue : null;
+
+    return result;
+}
+
+// Run validator on given array prop
+//
+// @param {String} propName
+// @param {Array} propValue
+// @param {Object} data
+// @param {Object|Array|Function} validator
+// @return {Boolean}
+function validArray$$1(propName, propValue, data, validator) {
+    var computedPropValue = ko.unwrap(propValue);
+    var validMethod = void 0;
+
+    if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+        validMethod = validProp$$1;
+    } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+        validMethod = validObject$$1;
+    } else if (isArray$1(validator) || isArray$1(validator.type)) {
+        if (validator.length > 1) {
+            validMethod = validWithin$$1;
+        } else {
+            validMethod = validArray$$1;
+        }
+    } else {
+        error('Invalid validator: ' + validator);
+        return false;
+    }
+
+    var resultArray = [];
+    var result = every(computedPropValue, function (item, i) {
+        return validMethod(i, item, resultArray, validator);
+    });
+
+    data[propName] = result && ko.isObservable(propValue) ? propValue : resultArray;
+
+    return result;
+}
+
+// Run validators
+//
+// @param {Object} data
+// @param {Object} validators
+function valid$$1(data, validators) {
+    if (!isObject$1(data) || data === null) {
+        error('Invalid props: ' + data);
+        return null;
+    } else {
+        var validData = {};
+
+        validObject$$1('data', data, validData, validators);
+
+        return validData['data'];
+    }
+}
+
+var linkedLabel$$1 = '__hasLinked';
+var unlinkMethodLabel$$1 = '__unlink';
+
+function isArrayObservable(target) {
+    return ko.isObservable(target) && isFunction(target.push);
+}
+
+// Link array observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+function linkArrayObservable$$1(observable, validator) {
+    if (!isArrayObservable(observable) || observable[linkedLabel$$1]) {
+        return;
+    }
+
+    var originPush = observable.push;
+    var originUnshift = observable.unshift;
+    var originSplice = observable.splice;
+
+    observable[unlinkMethodLabel$$1] = function () {
+        observable.push = originPush;
+        observable.unshift = originUnshift;
+        observable.splice = originSplice;
+        delete observable[linkedLabel$$1];
+        delete observable[unlinkMethodLabel$$1];
+    };
+
+    observable.push = function (item) {
+        var validResult = {};
+
+        if (validArray$$1('push', [item], validResult, validator)) {
+            originPush.call(observable, validResult['push'][0]);
+        }
+    };
+
+    observable.unshift = function (item) {
+        var validResult = {};
+
+        if (validArray$$1('unshift', [item], validResult, validator)) {
+            originUnshift.call(observable, validResult['unshift'][0]);
+        }
+    };
+
+    observable.splice = function () {
+        if (arguments.length < 3) {
+            return;
+        }
+
+        var args = [arguments[0], arguments[1]];
+        var result = every(toArray(arguments, 2), function (item, i) {
+            var subValidResult = {};
+            var subResult = validArray$$1('splice', [item], subValidResult, validator);
+
+            if (subResult) {
+                args.push(subValidResult['splice'][0]);
+            }
+
+            return subResult;
+        });
+
+        if (result) {
+            originSplice.apply(observable, args);
+        }
+    };
+
+    observable[linkedLabel$$1] = true;
+}
+
+// Link object observable with validators
+//
+// @param {Object} data
+// @param {Object} validators
+function linkObjectObservable$$1(data, validators) {
+    eachDict(validators, function (propName, validator) {
+        if (isArray(validator) && validator.length === 1) {
+            linkArrayObservable$$1(data[propName], validator[0]);
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+            linkObjectObservable$$1(data[propName], validator);
+        }
+    });
+}
+
+function isBasic(value) {
+    return isString(value) || isNumber(value) || isBoolean(value);
+}
+
+// Observable array and object items
+//
+// @param {Array} data
+function observableArray$$1(data) {
+    each(data, function (item, i) {
+        if (ko.isObservable(item)) {
+            return true;
+        }
+
+        if (isObject$1(item)) {
+            data[i] = observableObject$$1(item);
+        } else if (isArray$1(item)) {
+            data[i] = observableArray$$1(item);
+        }
+    });
+
+    return ko.observableArray(data);
+}
+
+// Observable object properties
+//
+// @param {Object} data
+function observableObject$$1(data) {
+    eachDict(data, function (propKey, propValue) {
+        if (ko.isObservable(propValue)) {
+            return true;
+        }
+
+        if (isObject$1(propValue)) {
+            data[propKey] = observableObject$$1(propValue);
+        } else if (isArray$1(propValue)) {
+            data[propKey] = observableArray$$1(propValue);
+        } else if (isBasic(propValue)) {
+            data[propKey] = ko.observable(propValue);
+        } else {
+            data[propKey] = propValue;
+        }
+    });
+
+    return data;
+}
+
+var slotLoader = {
+    id: 'slotLoader',
+    loadViewModel: function loadViewModel(name, vmConfig, callback) {
+        var ctor = null;
+        var originalCreateViewModel = null;
+
+        function wrapperedCreateViewModel(params, componentInfo) {
+            slot$$1(componentInfo.templateNodes, componentInfo.element);
+
+            if (ctor) {
+                return new ctor(params, componentInfo);
+            } else if (originalCreateViewModel) {
+                return originalCreateViewModel(params, componentInfo);
+            } else {
+                return null;
+            }
+        }
+
+        if (!vmConfig) {
+            return callback(null);
+        }
+
+        if (vmConfig && isObject$1(vmConfig)) {
+            if (!vmConfig.createViewModel) {
+                return callback(null);
+            }
+
+            originalCreateViewModel = vmConfig.createViewModel;
+        } else if (isFunction(vmConfig)) {
+            ctor = vmConfig;
+        }
+
+        callback(wrapperedCreateViewModel);
+    }
+};
+
+ko.components.loaders.unshift(slotLoader);
+
+var manualRenderFlagName = '__manual_render_flag__';
+var beginManualRenderTag = document.createComment('ko if: $data.' + manualRenderFlagName);
+var beginAfterRenderTag = document.createComment('ko template: { afterRender: ready.bind($data) }');
+var endTag = document.createComment('/ko');
+var base = {
+    ref: function ref(query, context) {
+        return ko.components.querySelector(query, context || this.componentInfo.element);
+    },
+    refs: function refs(query, context) {
+        return ko.components.querySelectorAll(query, context || this.componentInfo.element);
+    },
+    render: function render() {
+        this[manualRenderFlagName](false);
+        this[manualRenderFlagName](true);
+    }
+};
+
+var lifeComponentLoader = {
+    id: 'lifeComponentLoader',
+    loadViewModel: function loadViewModel(name, vmConfig, callback) {
+        var originalCreateViewModel = null;
+
+        if (vmConfig && isObject$1(vmConfig) && isFunction(vmConfig.createViewModel)) {
+            originalCreateViewModel = vmConfig.createViewModel;
+            vmConfig.createViewModel = function (params, componentInfo) {
+                var vm = new originalCreateViewModel(params, componentInfo);
+
+                vm[manualRenderFlagName] = ko.observable(true).extend({ notify: 'always' });
+                vm.ready = vm.ready || noop;
+                vm.created = vm.created || noop;
+                vm.ref = base.ref;
+                vm.refs = base.refs;
+                vm.render = base.render;
+                vm.created();
+
+                return vm;
+            };
+        }
+
+        callback(null);
+    },
+    loadTemplate: function loadTemplate(name, templateConfig, callback) {
+        ko.components.defaultLoader.loadTemplate(name, templateConfig, function (domNodeArray) {
+            domNodeArray.unshift(beginManualRenderTag.cloneNode());
+            domNodeArray.push(endTag.cloneNode());
+            domNodeArray.push(beginAfterRenderTag.cloneNode());
+            domNodeArray.push(endTag.cloneNode());
+            callback(domNodeArray);
+        });
+    }
+};
+
+ko.components.loaders.unshift(lifeComponentLoader);
+
 var modulePolyfill = {
-    constructor: noop,
     defaults: {},
     template: emptyTemplate
 };
@@ -616,40 +1134,52 @@ var modulePolyfill = {
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
 function transform(module) {
-    var _Object$assign = _extends({}, modulePolyfill, module);
+    var finalModule = { constructor: function constructor() {} };
 
-    var name = _Object$assign.name;
-    var constructor = _Object$assign.constructor;
-    var defaults$$1 = _Object$assign.defaults;
-    var mixins = _Object$assign.mixins;
-    var methods = _Object$assign.methods;
-    var computed = _Object$assign.computed;
-    var pureComputed = _Object$assign.pureComputed;
-    var style = _Object$assign.style;
-    var template = _Object$assign.template;
+    extend(finalModule, modulePolyfill);
+    extend(finalModule, module);
+
+    var name = finalModule.name;
+    var constructor = finalModule.constructor;
+    var defaults = finalModule.defaults;
+    var props = finalModule.props;
+    var mixins = finalModule.mixins;
+    var methods = finalModule.methods;
+    var computed = finalModule.computed;
+    var pureComputed = finalModule.pureComputed;
+    var style = finalModule.style;
+    var template = finalModule.template;
 
 
     insertCss(module.style);
-    _extends(constructor.prototype, {
-        ref: ref,
-        refs: refs,
-        ready: noop
-    }, methods);
+    extend(constructor.prototype, methods);
 
     return {
         viewModel: {
             createViewModel: function createViewModel(params, componentInfo) {
                 componentInfo.name = name;
 
-                var opts = _extends({}, defaults$$1, ko.toJS(params), pluck(componentInfo.element));
+                var opts = {};
+
+                extend(opts, defaults);
+                extend(opts, ko.toJS(params));
+                extend(opts, pluck$$1(componentInfo.element));
+
                 var vm = new constructor(opts, componentInfo);
+
+                if (props) {
+                    var validOpts = valid$$1(opts, props);
+                    // linkObjectObservable(validOpts, props);
+                    observableObject$$1(validOpts);
+                    extend(vm, validOpts);
+                }
 
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
 
                 vm.$opts = opts;
-                vm.$defaults = defaults$$1;
+                vm.$defaults = defaults;
                 vm.$info = vm.componentInfo = componentInfo;
 
                 delete vm.$opts['$raw'];
@@ -691,4 +1221,4 @@ function register(module) {
 ko.components._register = ko.components._register || ko.components.register;
 ko.components.register = register;
 
-}((this.knockout.register = this.knockout.register || {})));
+}());

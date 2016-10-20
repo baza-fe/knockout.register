@@ -1,3 +1,5 @@
+import { constructor as Avatar } from './avatar';
+
 export default {
     name: 'list',
 

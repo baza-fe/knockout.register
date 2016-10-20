@@ -1,4 +1,8 @@
-import { normalize, toPrimitive } from '../util/';
+import {
+    extend,
+    normalize,
+    toPrimitive
+} from '../util/';
 
 const invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
 const observableAttrNameRE = /^k-([\w\-]+)/i;
@@ -50,7 +54,7 @@ function pluckEventParams(bindingContext, bindingString) {
     return handlerParams;
 }
 
-function pluck(node) {
+export function pluck(node) {
     let bindingContext = null;
     let observableBindingStringList = [];
     let eventBindingStringList = [];
@@ -81,11 +85,8 @@ function pluck(node) {
         bindingContext = ko.contextFor(node);
     }
 
-    return Object.assign(
-        result,
-        eventBindingString && pluckEventParams(bindingContext, eventBindingString),
-        observableBindingString && pluckObservableParams(bindingContext, observableBindingString)
-    );
-}
+    extend(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString));
+    extend(result, observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
 
-export default pluck;
+    return result;
+};

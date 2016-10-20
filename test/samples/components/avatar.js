@@ -20,9 +20,6 @@ export default {
     ],
 
     methods: {
-        ready() {
-        },
-
         rename(newFirst, newLast) {
             this.first(newFirst);
             this.last(newLast);
@@ -31,13 +28,13 @@ export default {
 
     computed: {
         full() {
-            return `${this.first()} ${this.last()}`;
+            return `${ko.unwrap(this.first)} ${ko.unwrap(this.last)}`;
         }
     },
 
     pureComputed: {
         full2() {
-            return `${this.first()} ${this.last()}`;
+            return `${ko.unwrap(this.first)} ${ko.unwrap(this.last)}`;
         }
     },
 

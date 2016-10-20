@@ -21,10 +21,10 @@ module.exports = function(config) {
     plugins: [
         'karma-jasmine',
         'karma-chrome-launcher',
-        'karma-ie-launcher',
         'karma-phantomjs-launcher',
         'karma-firefox-launcher',
-        'karma-safari-launcher',
+        // 'karma-ie-launcher',
+        // 'karma-safari-launcher',
         'karma-rollup-preprocessor'
     ],
 
@@ -83,12 +83,12 @@ module.exports = function(config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome', 'Firefox', 'IE', 'Safari', 'PhantomJS'],
+    browsers: ['Chrome', 'Firefox', 'PhantomJS'],
 
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: true,
+    singleRun: false,
 
     // Concurrency level
     // how many browser should be started simultaneous

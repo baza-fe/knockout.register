@@ -1,4 +1,6 @@
-import { isString } from './lang';
+import {
+    isString
+} from './lang';
 
 export function apply(selector, contextNode) {
     if (isString(contextNode)) {

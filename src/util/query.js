@@ -1,6 +1,10 @@
 const defaultSpy = document.createComment('spy');
 
 function getVmForNode(node) {
+    if (!node) {
+        return null;
+    }
+
     let spy = node.lastElementChild || defaultSpy;
     let useDefault = spy === defaultSpy;
 
@@ -67,22 +71,6 @@ export function getElementsByClassName(selector, context = document) {
     return ko.utils.arrayMap(nodes, (node) => {
         return getVmForNode(node);
     });
-};
-
-// ref vm
-//
-// @param {String} query
-// @param {Node} context
-export function ref(query, context) {
-    return ko.components.querySelector(query, context || this.componentInfo.element);
-};
-
-// ref vms
-//
-// @param {String} query
-// @param {Node} context
-export function refs(query, context) {
-    return ko.components.querySelectorAll(query, context || this.componentInfo.element);
 };
 
 // extend ko.components
