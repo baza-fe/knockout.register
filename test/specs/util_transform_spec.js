@@ -1,7 +1,8 @@
-import eventMixin from '../samples/mixins/event';
-import stateMixin from '../samples/mixins/state';
-import transform from '../../src/core/transform';
-import { noop, emptyTemplate } from '../../src/util/';
+import {
+    noop,
+    emptyTemplate,
+    transform
+} from '../../src/util/';
 
 const Component = {
     name: 'component',

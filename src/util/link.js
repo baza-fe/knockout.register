@@ -5,7 +5,7 @@ import {
     toArray,
     isFunction,
     validArray
-} from './index';
+} from './';
 
 export const linkedLabel = '__hasLinked';
 export const unlinkMethodLabel = '__unlink';

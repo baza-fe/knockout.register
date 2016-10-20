@@ -6,7 +6,7 @@ import {
     isBoolean,
     isArray,
     isObject
-} from './index';
+} from './';
 
 function isBasic(value) {
     return isString(value) || isNumber(value) || isBoolean(value);

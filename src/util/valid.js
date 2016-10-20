@@ -7,7 +7,7 @@ import {
     hasOwn,
     warn,
     error
-} from './index';
+} from './';
 import {
     defineValidatorName
 } from '../core/validator';

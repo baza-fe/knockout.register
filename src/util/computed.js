@@ -1,6 +1,6 @@
 import {
     eachDict
-} from './lang';
+} from './';
 
 // create computed observalbes on context
 //

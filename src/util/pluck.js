@@ -2,7 +2,7 @@ import {
     extend,
     normalize,
     toPrimitive
-} from '../util/';
+} from './';
 
 const invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
 const observableAttrNameRE = /^k-([\w\-]+)/i;
