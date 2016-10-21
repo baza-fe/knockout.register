@@ -19,11 +19,12 @@ describe('some', () => {
 
 describe('every', () => {
     it('should return true', () => {
+        expect(every([], (v) => { return v > 0; })).toBe(true);
         expect(every([1, 2], (v) => { return v > 0; })).toBe(true);
     });
 
     it('should return false', () => {
-        expect(every([], (v) => { return v > 0; })).toBe(false);
+        expect(every(undefined, (v) => { return v > 0; })).toBe(false);
         expect(every([0, 1], (v) => { return v > 0; })).toBe(false);
     });
 });

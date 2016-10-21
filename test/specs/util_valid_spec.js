@@ -190,10 +190,12 @@ describe('validWithin', () => {
 
 describe('validArray', () => {
     const arrayOfString = ko.types.arrayOf(ko.types.String);
-    const arrayOfShape = ko.types.arrayOf(ko.types.shape({
-        p1: ko.types.String,
-        p2: ko.types.String
-    }));
+    const arrayOfShape = ko.types.arrayOf(
+        ko.types.shape({
+            p1: ko.types.String,
+            p2: ko.types.String
+        })
+    );
 
     it('should return true', () => {
         expect(validArray(string, [ string, string, string ], {}, arrayOfString[0])).toBe(true);
@@ -292,9 +294,107 @@ describe('valid', () => {
     });
 
     it('should log error: Invalid props', () => {
-        console.error = (err) => {
-            expect(err).toBe('Invalid props: null');
-        };
+        spyOn(console, 'error');
         valid(null, {});
+        expect(console.error, 'Invalid props: null');
+    });
+});
+
+describe('validObject(nested)', () => {
+    const shape = ko.types.shape({
+        p1: ko.types.String,
+        p2: ko.types.String
+    });
+    const shapeOfShape = ko.types.shape({
+        s1: shape,
+        s2: shape
+    });
+    const shapeOfArray = ko.types.shape({
+        s1: ko.types.arrayOf(ko.types.String),
+        s2: ko.types.arrayOf(ko.types.String)
+    });
+    const shapeOfArrayOfShape = ko.types.shape({
+        s1: ko.types.arrayOf(shape),
+        s2: ko.types.arrayOf(shape)
+    });
+
+    it('should return true', () => {
+        expect(validObject(string, {
+            s1: { p1: string, p2: string },
+            s2: { p1: string, p2: string }
+        }, {}, shapeOfShape));
+        expect(validObject(string, {
+            s1: [ string, string, string ],
+            s2: [ string, string, string ]
+        }, {}, shapeOfArray));
+        expect(validObject(string, {
+            s1: [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            s2: [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ]
+        }, {}, shapeOfArrayOfShape));
+    });
+
+    it('should return false', () => {
+        expect(validObject(string, {
+            s1: { p1: string, p2: string },
+            s2: { p1: string, p2: number }
+        }, {}, shapeOfShape));
+        expect(validObject(string, {
+            s1: [ string, string, string ],
+            s2: [ string, string, number ]
+        }, {}, shapeOfArray));
+        expect(validObject(string, {
+            s1: [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            s2: [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: number } ]
+        }, {}, shapeOfArrayOfShape));
+    });
+});
+
+describe('validArray(nested)', () => {
+    const shape = ko.types.shape({
+        p1: ko.types.String,
+        p2: ko.types.String
+    });
+    const arrayOfArray = ko.types.arrayOf(
+        ko.types.arrayOf(ko.types.String)
+    );
+    const arrayOfShape = ko.types.arrayOf(shape);
+    const arrayOfArrayOfShape = ko.types.arrayOf(
+        ko.types.arrayOf(shape)
+    );
+
+    it('should return true', () => {
+        expect(validArray(string, [
+            [ string, string, string ],
+            [ string, string, string ],
+            [ string, string, string ]
+        ], {}, arrayOfArray)).toBe(true);
+        expect(validArray(string, [
+            { p1: string, p2: string },
+            { p1: string, p2: string },
+            { p1: string, p2: string }
+        ], {}, arrayOfShape)).toBe(true);
+        expect(validArray(string, [
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ]
+        ], {}, arrayOfArrayOfShape)).toBe(true);
+    });
+
+    it('should return false', () => {
+        expect(validArray(string, [
+            [ string, string, string ],
+            [ string, string, string ],
+            [ string, string, number ]
+        ], {}, arrayOfArray)).toBe(false);
+        expect(validArray(string, [
+            { p1: string, p2: string },
+            { p1: string, p2: string },
+            { p1: string, p2: number }
+        ], {}, arrayOfShape)).toBe(false);
+        expect(validArray(string, [
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: string } ],
+            [ { p1: string, p2: string }, { p1: string, p2: string }, { p1: string, p2: number } ]
+        ], {}, arrayOfArrayOfShape)).toBe(false);
     });
 });
