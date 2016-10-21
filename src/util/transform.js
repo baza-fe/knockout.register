@@ -58,8 +58,8 @@ export function transform(module) {
 
                 if (props) {
                     let validOpts = valid(opts, props);
-                    // linkObjectObservable(validOpts, props);
                     observableObject(validOpts);
+                    linkObjectObservable(validOpts, props);
                     extend(vm, validOpts);
                 }
 

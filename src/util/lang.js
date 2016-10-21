@@ -21,8 +21,8 @@ export function normalize(name) {
 
 // type checker
 export function isType(name) {
-    return function (real) {
-        return Object.prototype.toString.call(real) === `[object ${name}]`;
+    return function (actual) {
+        return Object.prototype.toString.call(actual) === `[object ${name}]`;
     };
 };
 
@@ -117,8 +117,12 @@ export function some(target, checker) {
 // @param {Function} checker
 // @return {Boolean}
 export function every(target, checker) {
-    if (!target || !target.length) {
+    if (!target) {
         return false;
+    }
+
+    if (!target.length) {
+        return true;
     }
 
     let result = true;
