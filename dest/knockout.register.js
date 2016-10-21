@@ -43,8 +43,6 @@ function isNode(target, name) {
     return nodeName === name;
 }
 
-var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
-
 // no-ops function
 function noop() {}
 
@@ -67,8 +65,8 @@ function normalize(name) {
 
 // type checker
 function isType(name) {
-    return function (real) {
-        return Object.prototype.toString.call(real) === '[object ' + name + ']';
+    return function (actual) {
+        return Object.prototype.toString.call(actual) === '[object ' + name + ']';
     };
 }
 
@@ -76,11 +74,13 @@ function isType(name) {
 var isString = isType('String');
 var isNumber = isType('Number');
 var isBoolean = isType('Boolean');
-var isObject$1 = isType('Object');
-var isArray$1 = isType('Array');
+var isObject = isType('Object');
+var isArray = isType('Array');
 var isFunction = isType('Function');
 var isDate = isType('Date');
 var isRegExp = isType('RegExp');
+
+var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
 
 // parse to string to primitive value
 //
@@ -164,8 +164,12 @@ function some(target, checker) {
 // @param {Function} checker
 // @return {Boolean}
 function every(target, checker) {
-    if (!target || !target.length) {
+    if (!target) {
         return false;
+    }
+
+    if (!target.length) {
+        return true;
     }
 
     var result = true;
@@ -210,7 +214,11 @@ function extend(target, dict) {
     var i = keys.length;
 
     while (i--) {
-        target[keys[i]] = dict[keys[i]];
+        var key = keys[i];
+
+        if (hasOwn(dict, key)) {
+            target[key] = dict[key];
+        }
     }
 
     return target;
@@ -232,9 +240,14 @@ function linkArrayObservable$$1(observable, validator) {
         return;
     }
 
+    var computedObservable = ko.unwrap(observable);
     var originPush = observable.push;
     var originUnshift = observable.unshift;
     var originSplice = observable.splice;
+
+    each(computedObservable, function (item) {
+        linkArrayObservable$$1(item);
+    });
 
     observable[unlinkMethodLabel$$1] = function () {
         observable.push = originPush;
@@ -248,7 +261,8 @@ function linkArrayObservable$$1(observable, validator) {
         var validResult = {};
 
         if (validArray$$1('push', [item], validResult, validator)) {
-            originPush.call(observable, validResult['push'][0]);
+            observableArray$$1(validResult['push']);
+            return originPush.call(observable, validResult['push'][0]);
         }
     };
 
@@ -256,7 +270,8 @@ function linkArrayObservable$$1(observable, validator) {
         var validResult = {};
 
         if (validArray$$1('unshift', [item], validResult, validator)) {
-            originUnshift.call(observable, validResult['unshift'][0]);
+            observableArray$$1(validResult['unshift']);
+            return originUnshift.call(observable, validResult['unshift'][0]);
         }
     };
 
@@ -271,6 +286,7 @@ function linkArrayObservable$$1(observable, validator) {
             var subResult = validArray$$1('splice', [item], subValidResult, validator);
 
             if (subResult) {
+                observableArray$$1(subValidResult['splice']);
                 args.push(subValidResult['splice'][0]);
             }
 
@@ -278,7 +294,7 @@ function linkArrayObservable$$1(observable, validator) {
         });
 
         if (result) {
-            originSplice.apply(observable, args);
+            return originSplice.apply(observable, args);
         }
     };
 
@@ -312,9 +328,9 @@ function observableArray$$1(data) {
             return true;
         }
 
-        if (isObject$1(item)) {
+        if (isObject(item)) {
             data[i] = observableObject$$1(item);
-        } else if (isArray$1(item)) {
+        } else if (isArray(item)) {
             data[i] = observableArray$$1(item);
         }
     });
@@ -331,11 +347,11 @@ function observableObject$$1(data) {
             return true;
         }
 
-        if (isObject$1(propValue)) {
+        if (isObject(propValue)) {
             data[propKey] = observableObject$$1(propValue);
-        } else if (isArray$1(propValue)) {
+        } else if (isArray(propValue)) {
             data[propKey] = observableArray$$1(propValue);
-        } else if (isBasic(propValue)) {
+        } else if (propValue === undefined || isBasic(propValue)) {
             data[propKey] = ko.observable(propValue);
         } else {
             data[propKey] = propValue;
@@ -539,7 +555,7 @@ ko.utils.insertCss = ko.utils.insertCss || insertCss$$1;
 //
 // @param {Array|String|Node} tpl
 function pluckNodes(tpl) {
-    if (isArray$1(tpl)) {
+    if (isArray(tpl)) {
         return tpl;
     }
 
@@ -691,8 +707,8 @@ function transform$$1(module) {
 
                 if (props) {
                     var validOpts = valid$$1(opts, props);
-                    // linkObjectObservable(validOpts, props);
                     observableObject$$1(validOpts);
+                    linkObjectObservable$$1(validOpts, props);
                     extend(vm, validOpts);
                 }
 
@@ -730,8 +746,8 @@ ko.types = ko.types || {
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
-    Object: isObject$1,
-    Array: isArray$1,
+    Object: isObject,
+    Array: isArray,
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
@@ -742,8 +758,8 @@ ko.types = ko.types || {
     string: { type: isString, default: '' },
     number: { type: isNumber, default: 0 },
     boolean: { type: isBoolean, default: false },
-    object: { type: isObject$1, default: {} },
-    array: { type: isArray$1, default: [] },
+    object: { type: isObject, default: {} },
+    array: { type: isArray, default: [] },
     function: { type: isFunction, default: noop },
     date: { type: isDate, default: new Date() },
     regexp: { type: isRegExp, default: null },
@@ -808,7 +824,7 @@ var buildInValidators = Object.keys(ko.types);
 // @param {Any} validator
 // @return {ANy}
 function defineValidator(validator) {
-    return isObject$1(validator) && hasOwn(validator, 'type') ? validator.type : validator;
+    return isObject(validator) && hasOwn(validator, 'type') ? validator.type : validator;
 }
 
 // Get validator name
@@ -819,9 +835,9 @@ function defineValidatorName(validator) {
     var name = '';
     var computedValidator = defineValidator(validator);
 
-    if (isArray$1(computedValidator)) {
+    if (isArray(computedValidator)) {
         name = computedValidator.length === 1 ? 'arrayOf' : 'oneOfType';
-    } else if (isObject$1(computedValidator)) {
+    } else if (isObject(computedValidator)) {
         name = 'shape';
     } else {
         each(buildInValidators, function (key) {
@@ -843,7 +859,7 @@ function defineValidatorName(validator) {
 // @param {Object|Function} validator
 // @return {Boolean}
 function validProp$$1(propName, propValue, data, validator) {
-    var isWrapped = isObject$1(validator);
+    var isWrapped = isObject(validator);
     var isObservable = ko.isObservable(propValue);
     var required = isWrapped ? validator.required : false;
     var defaultValue = isWrapped ? validator.default : undefined;
@@ -890,11 +906,11 @@ function validObject$$1(propName, propValue, data, validators) {
         var validator = validators[subPropName];
         var subPropValue = computedPropValue ? computedPropValue[subPropName] : undefined;
 
-        if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+        if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
             return validProp$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
             return validObject$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isArray$1(validator) || isArray$1(validator.type)) {
+        } else if (isArray(validator) || isArray(validator.type)) {
             var subValidator = validator.type ? validator.type : validator;
             var len = subValidator.length;
 
@@ -937,24 +953,30 @@ function validWithin$$1(propName, propValue, data, validators) {
 
 // Run validator on given array prop
 //
-// @param {String} propName
+// @param {String|Number} propName
 // @param {Array} propValue
-// @param {Object} data
+// @param {Object|Array} data
 // @param {Object|Array|Function} validator
 // @return {Boolean}
 function validArray$$1(propName, propValue, data, validator) {
+    if (propValue === undefined) {
+        data[propName] = [];
+        return true;
+    }
+
     var computedPropValue = ko.unwrap(propValue);
     var validMethod = void 0;
 
-    if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+    if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
         validMethod = validProp$$1;
-    } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+    } else if (isObject(validator) && !hasOwn(validator, 'type')) {
         validMethod = validObject$$1;
-    } else if (isArray$1(validator) || isArray$1(validator.type)) {
+    } else if (isArray(validator) || isArray(validator.type)) {
         if (validator.length > 1) {
             validMethod = validWithin$$1;
         } else {
             validMethod = validArray$$1;
+            validator = validator[0];
         }
     } else {
         error('Invalid validator: ' + validator);
@@ -962,9 +984,15 @@ function validArray$$1(propName, propValue, data, validator) {
     }
 
     var resultArray = [];
-    var result = every(computedPropValue, function (item, i) {
-        return validMethod(i, item, resultArray, validator);
-    });
+    var result = false;
+
+    if (isArray(computedPropValue)) {
+        result = every(computedPropValue, function (item, i) {
+            return validMethod(i, item, resultArray, validator);
+        });
+    } else {
+        result = validMethod(0, propValue, resultArray, validator);
+    }
 
     data[propName] = result && ko.isObservable(propValue) ? propValue : resultArray;
 
@@ -976,7 +1004,7 @@ function validArray$$1(propName, propValue, data, validator) {
 // @param {Object} data
 // @param {Object} validators
 function valid$$1(data, validators) {
-    if (!isObject$1(data) || data === null) {
+    if (!isObject(data) || data === null) {
         error('Invalid props: ' + data);
         return null;
     } else {
@@ -1010,7 +1038,7 @@ var slotLoader = {
             return callback(null);
         }
 
-        if (vmConfig && isObject$1(vmConfig)) {
+        if (vmConfig && isObject(vmConfig)) {
             if (!vmConfig.createViewModel) {
                 return callback(null);
             }
@@ -1048,7 +1076,7 @@ var lifeComponentLoader = {
     loadViewModel: function loadViewModel(name, vmConfig, callback) {
         var originalCreateViewModel = null;
 
-        if (vmConfig && isObject$1(vmConfig) && isFunction(vmConfig.createViewModel)) {
+        if (vmConfig && isObject(vmConfig) && isFunction(vmConfig.createViewModel)) {
             originalCreateViewModel = vmConfig.createViewModel;
             vmConfig.createViewModel = function (params, componentInfo) {
                 var vm = new originalCreateViewModel(params, componentInfo);
