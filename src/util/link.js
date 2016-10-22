@@ -12,7 +12,6 @@ import {
 } from './';
 
 export const linkedLabel = '__hasLinked';
-export const unlinkMethodLabel = '__unlink';
 
 function isArrayObservable(target) {
     return ko.isObservable(target) && isFunction(target.push);
@@ -27,64 +26,23 @@ export function linkArrayObservable(observable, validator) {
         return;
     }
 
-    const computedObservable = ko.unwrap(observable);
-    const originPush = observable.push;
-    const originUnshift = observable.unshift;
-    const originSplice = observable.splice;
-
-    each(computedObservable, (item) => {
+    each(ko.unwrap(observable), (item) => {
         linkArrayObservable(item);
     });
-
-    observable[unlinkMethodLabel] = () => {
-        observable.push = originPush;
-        observable.unshift = originUnshift;
-        observable.splice = originSplice;
-        delete observable[linkedLabel];
-        delete observable[unlinkMethodLabel];
-    };
-
-    observable.push = (item) => {
+    observable.subscribe((changes) => {
         const validResult = {};
+        const items = [];
 
-        if (validArray('push', [ item ], validResult, validator)) {
-            observableArray(validResult['push']);
-            return originPush.call(observable, validResult['push'][0]);
-        }
-    };
-
-    observable.unshift = (item) => {
-        const validResult = {};
-
-        if (validArray('unshift', [ item ], validResult, validator)) {
-            observableArray(validResult['unshift']);
-            return originUnshift.call(observable, validResult['unshift'][0]);
-        }
-    };
-
-    observable.splice = function () {
-        if (arguments.length < 3) {
-            return;
-        }
-
-        const args = [ arguments[0], arguments[1] ];
-        const result = every(toArray(arguments, 2), (item, i) => {
-            const subValidResult = {};
-            const subResult = validArray('splice', [ item ], subValidResult, validator);
-
-            if (subResult) {
-                observableArray(subValidResult['splice']);
-                args.push(subValidResult['splice'][0]);
+        each(changes, (change) => {
+            if (change.status === 'added') {
+                items.push(change.value);
             }
-
-            return subResult;
         });
 
-        if (result) {
-            return originSplice.apply(observable, args);
+        if (validArray('link', items, validResult, validator)) {
+            observableArray(observable());
         }
-    };
-
+    }, null, 'arrayChange');
     observable[linkedLabel] = true;
 };
 
