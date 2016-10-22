@@ -1,6 +1,5 @@
 import {
     linkedLabel,
-    unlinkMethodLabel,
     linkObjectObservable,
     linkArrayObservable
 } from '../../src/util/link';
@@ -22,63 +21,11 @@ const number2 = 2;
 const number3 = 3;
 
 describe('linkArrayObservable', () => {
-    it('should create unlink method', () => {
-        const ob = ko.observableArray([]);
-
-        linkArrayObservable(ob, ko.types.String)
-        expect(ob[unlinkMethodLabel]).toBeDefined();
-    });
-
-    it('should remove unlink method', () => {
-        const ob = ko.observableArray([]);
-
-        linkArrayObservable(ob, ko.types.String);
-        ob[unlinkMethodLabel]();
-
-        expect(ob[unlinkMethodLabel]).toBeUndefined();
-    });
-
     it('should create tag', () => {
         const ob = ko.observableArray([]);
 
         linkArrayObservable(ob, ko.types.String);
         expect(ob[linkedLabel]).toBeDefined();
-    });
-
-    it('should remove tag', () => {
-        const ob = ko.observableArray([]);
-
-        linkArrayObservable(ob, ko.types.String);
-        ob[unlinkMethodLabel]();
-
-        expect(ob[linkedLabel]).toBeUndefined();
-    });
-
-    it('should link works', () => {
-        const ob = ko.observableArray([]);
-        const originPush = ob.push;
-        const originUnshift = ob.unshift;
-        const originSplice = ob.splice;
-
-        linkArrayObservable(ob, ko.types.String);
-
-        expect(ob.push).not.toBe(originPush);
-        expect(ob.unshift).not.toBe(originUnshift);
-        expect(ob.splice).not.toBe(originSplice);
-    });
-
-    it('should unlink works', () => {
-        const ob = ko.observableArray([]);
-        const originPush = ob.push;
-        const originUnshift = ob.unshift;
-        const originSplice = ob.splice;
-
-        linkArrayObservable(ob, ko.types.String);
-        ob[unlinkMethodLabel]();
-
-        expect(ob.push).toBe(originPush);
-        expect(ob.unshift).toBe(originUnshift);
-        expect(ob.splice).toBe(originSplice);
     });
 });
 
@@ -121,20 +68,15 @@ describe('linkArrayObservable.push', () => {
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 3');
     });
 
-    it('should ignore invalid items', () => {
+    it('should not ignore invalid items', () => {
         const ob = ko.observableArray([]);
 
         linkArrayObservable(ob, ko.types.String);
         ob.push(number1);
-        ob.push(number2);
-        ob.push(number3);
         ob.push(string1);
-        ob.push(string2);
-        ob.push(string3);
 
-        expect(ob()[0]).toBe(string1);
-        expect(ob()[1]).toBe(string2);
-        expect(ob()[2]).toBe(string3);
+        expect(ob()[0]).toBe(number1);
+        expect(ob()[1]).toBe(string1);
     });
 });
 
@@ -177,20 +119,15 @@ describe('linkArrayObservable.unshift', () => {
         expect(console.error).toHaveBeenCalledWith('Invalid prop: key: 0, expect: ko.types.String, actual: 3');
     });
 
-    it('should ignore invalid items', () => {
+    it('should not ignore invalid items', () => {
         const ob = ko.observableArray([]);
 
         linkArrayObservable(ob, ko.types.String);
         ob.unshift(number1);
-        ob.unshift(number2);
-        ob.unshift(number3);
         ob.unshift(string1);
-        ob.unshift(string2);
-        ob.unshift(string3);
 
-        expect(ob()[0]).toBe(string3);
-        expect(ob()[1]).toBe(string2);
-        expect(ob()[2]).toBe(string1);
+        expect(ob()[0]).toBe(string1);
+        expect(ob()[1]).toBe(number1);
     });
 });
 
@@ -236,15 +173,10 @@ describe('linkArrayObservable.splice', () => {
 
         linkArrayObservable(ob, ko.types.String);
         ob.splice(0, 0, number1);
-        ob.splice(0, 0, number2);
-        ob.splice(0, 0, number3);
         ob.splice(0, 0, string1);
-        ob.splice(0, 0, string2);
-        ob.splice(0, 0, string3);
 
-        expect(ob()[0]).toBe(string3);
-        expect(ob()[1]).toBe(string2);
-        expect(ob()[2]).toBe(string1);
+        expect(ob()[0]).toBe(string1);
+        expect(ob()[1]).toBe(number1);
     });
 });
 
@@ -273,7 +205,7 @@ describe('linkObjectObservable', () => {
         };
 
         linkObjectObservable(data, shapeOfArray);
-        expect(data.array[unlinkMethodLabel]).toBeDefined();
+        expect(data.array[linkedLabel]).toBeDefined();
     });
 
     it('should not link array property', () => {
@@ -282,7 +214,7 @@ describe('linkObjectObservable', () => {
         };
 
         linkObjectObservable(data, shapeOfArray);
-        expect(data.array[unlinkMethodLabel]).toBeUndefined();
+        expect(data.array[linkedLabel]).toBeUndefined();
     });
 
     it('should link observabled array items', () => {
@@ -295,9 +227,9 @@ describe('linkObjectObservable', () => {
         };
 
         linkObjectObservable(data, shapeOfArrayOfArray);
-        expect(data.array()[0][unlinkMethodLabel]).toBeDefined();
-        expect(data.array()[1][unlinkMethodLabel]).toBeDefined();
-        expect(data.array()[2][unlinkMethodLabel]).toBeDefined();
+        expect(data.array()[0][linkedLabel]).toBeDefined();
+        expect(data.array()[1][linkedLabel]).toBeDefined();
+        expect(data.array()[2][linkedLabel]).toBeDefined();
     });
 
     it('should not link array items', () => {
@@ -310,9 +242,9 @@ describe('linkObjectObservable', () => {
         };
 
         linkObjectObservable(data, shapeOfArrayOfArray);
-        expect(data.array()[0][unlinkMethodLabel]).toBeUndefined();
-        expect(data.array()[1][unlinkMethodLabel]).toBeUndefined();
-        expect(data.array()[2][unlinkMethodLabel]).toBeUndefined();
+        expect(data.array()[0][linkedLabel]).toBeUndefined();
+        expect(data.array()[1][linkedLabel]).toBeUndefined();
+        expect(data.array()[2][linkedLabel]).toBeUndefined();
     });
 
     it('should create object observable', () => {
