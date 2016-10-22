@@ -2,7 +2,7 @@ import {
     noop,
     isObject,
     isFunction
-} from '../util';
+} from '../util/';
 
 const manualRenderFlagName = '__manual_render_flag__';
 const beginManualRenderTag = document.createComment('ko if: $data.' + manualRenderFlagName);

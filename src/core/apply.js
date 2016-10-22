@@ -1,6 +1,6 @@
 import {
     isString
-} from './lang';
+} from '../util/';
 
 export function apply(selector, contextNode) {
     if (isString(contextNode)) {

@@ -6,7 +6,7 @@ import {
     isBoolean,
     isArray,
     isObject
-} from './index';
+} from './';
 
 function isBasic(value) {
     return isString(value) || isNumber(value) || isBoolean(value);
@@ -44,7 +44,7 @@ export function observableObject(data) {
             data[propKey] = observableObject(propValue);
         } else if (isArray(propValue)) {
             data[propKey] = observableArray(propValue);
-        } else if (isBasic(propValue)) {
+        } else if (propValue === undefined || isBasic(propValue)) {
             data[propKey] = ko.observable(propValue);
         } else {
             data[propKey] = propValue;

@@ -10,7 +10,7 @@ import {
     emptyTemplate,
     computedAll,
     pureComputedAll
-} from '../util/';
+} from './';
 
 const modulePolyfill = {
     defaults: {},
@@ -21,7 +21,7 @@ const modulePolyfill = {
 //
 // @param {Object} module Transiton component module
 // @return {Object} Native component module
-function transform(module) {
+export function transform(module) {
     let finalModule = { constructor: function() {} };
 
     extend(finalModule, modulePolyfill);
@@ -58,8 +58,8 @@ function transform(module) {
 
                 if (props) {
                     let validOpts = valid(opts, props);
-                    // linkObjectObservable(validOpts, props);
                     observableObject(validOpts);
+                    linkObjectObservable(validOpts, props);
                     extend(vm, validOpts);
                 }
 
@@ -80,6 +80,4 @@ function transform(module) {
         synchronous: true,
         template
     };
-}
-
-export default transform;
+};

@@ -1,9 +1,9 @@
 import {
     exist,
     throwError,
-    isString
+    isString,
+    transform
 } from '../util/';
-import transform from './transform';
 
 // Register transition component module
 //

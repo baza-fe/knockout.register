@@ -14,10 +14,6 @@ afterAll(() => {
     console.error = console._error;
 });
 
-const stringValidator = ko.types.arrayOf(
-    ko.types.String
-);
-
 const string1 = 'string1';
 const string2 = 'string2';
 const string3 = 'string3';
@@ -29,14 +25,14 @@ describe('linkArrayObservable', () => {
     it('should create unlink method', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0])
+        linkArrayObservable(ob, ko.types.String)
         expect(ob[unlinkMethodLabel]).toBeDefined();
     });
 
     it('should remove unlink method', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob[unlinkMethodLabel]();
 
         expect(ob[unlinkMethodLabel]).toBeUndefined();
@@ -45,14 +41,14 @@ describe('linkArrayObservable', () => {
     it('should create tag', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         expect(ob[linkedLabel]).toBeDefined();
     });
 
     it('should remove tag', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob[unlinkMethodLabel]();
 
         expect(ob[linkedLabel]).toBeUndefined();
@@ -64,7 +60,7 @@ describe('linkArrayObservable', () => {
         const originUnshift = ob.unshift;
         const originSplice = ob.splice;
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
 
         expect(ob.push).not.toBe(originPush);
         expect(ob.unshift).not.toBe(originUnshift);
@@ -77,7 +73,7 @@ describe('linkArrayObservable', () => {
         const originUnshift = ob.unshift;
         const originSplice = ob.splice;
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob[unlinkMethodLabel]();
 
         expect(ob.push).toBe(originPush);
@@ -90,7 +86,7 @@ describe('linkArrayObservable.push', () => {
     it('should works', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.push(string1);
         ob.push(string2);
         ob.push(string3);
@@ -103,7 +99,7 @@ describe('linkArrayObservable.push', () => {
     it('should log error: Invalid prop', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         spyOn(console, 'error');
         ob.push(number1);
         ob.push(number2);
@@ -117,7 +113,7 @@ describe('linkArrayObservable.push', () => {
     it('should ignore invalid items', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.push(number1);
         ob.push(number2);
         ob.push(number3);
@@ -135,7 +131,7 @@ describe('linkArrayObservable.unshift', () => {
     it('should works', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.unshift(string1);
         ob.unshift(string2);
         ob.unshift(string3);
@@ -148,7 +144,7 @@ describe('linkArrayObservable.unshift', () => {
     it('should log error: Invalid prop', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         spyOn(console, 'error');
         ob.unshift(number1);
         ob.unshift(number2);
@@ -162,7 +158,7 @@ describe('linkArrayObservable.unshift', () => {
     it('should ignore invalid items', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.unshift(number1);
         ob.unshift(number2);
         ob.unshift(number3);
@@ -180,7 +176,7 @@ describe('linkArrayObservable.splice', () => {
     it('should works', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.splice(0, 0, string1, string2, string3);
 
         expect(ob()[0]).toBe(string1);
@@ -191,7 +187,7 @@ describe('linkArrayObservable.splice', () => {
     it('should log error: Invalid prop', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         spyOn(console, 'error');
         ob.splice(0, 0, number1);
         ob.splice(0, 0, number2);
@@ -205,7 +201,7 @@ describe('linkArrayObservable.splice', () => {
     it('should ignore invalid items', () => {
         const ob = ko.observableArray([]);
 
-        linkArrayObservable(ob, stringValidator[0]);
+        linkArrayObservable(ob, ko.types.String);
         ob.splice(0, 0, number1);
         ob.splice(0, 0, number2);
         ob.splice(0, 0, number3);
@@ -219,12 +215,100 @@ describe('linkArrayObservable.splice', () => {
     });
 });
 
-// describe('linkObjectObservable', () => {
-//     it('should link observabled array property', () => {
+describe('linkObjectObservable', () => {
+    const shapeOfArray = ko.types.shape({
+        array: ko.types.arrayOf(
+            ko.types.String
+        )
+    });
+    const shapeOfArrayOfShape = ko.types.shape({
+        array: ko.types.arrayOf(
+            ko.types.shape({
+                string: ko.types.String
+            })
+        )
+    });
+    const shapeOfArrayOfArray = ko.types.shape({
+        array: ko.types.arrayOf(
+            ko.types.arrayOf(ko.types.String)
+        )
+    });
 
-//     });
+    it('should link observabled array property', () => {
+        const data = {
+            array: ko.observableArray([ string1, string2, string3 ])
+        };
 
-//     it('should link nested observabled array property', () => {
+        linkObjectObservable(data, shapeOfArray);
+        expect(data.array[unlinkMethodLabel]).toBeDefined();
+    });
 
-//     });
-// });
+    it('should not link array property', () => {
+        const data = {
+            array: [ string1, string2, string3 ]
+        };
+
+        linkObjectObservable(data, shapeOfArray);
+        expect(data.array[unlinkMethodLabel]).toBeUndefined();
+    });
+
+    it('should link observabled array items', () => {
+        const data = {
+            array: ko.observableArray([
+                ko.observableArray([ string1, string2, string3 ]),
+                ko.observableArray([ string1, string2, string3 ]),
+                ko.observableArray([ string1, string2, string3 ])
+            ])
+        };
+
+        linkObjectObservable(data, shapeOfArrayOfArray);
+        expect(data.array()[0][unlinkMethodLabel]).toBeDefined();
+        expect(data.array()[1][unlinkMethodLabel]).toBeDefined();
+        expect(data.array()[2][unlinkMethodLabel]).toBeDefined();
+    });
+
+    it('should not link array items', () => {
+        const data = {
+            array: ko.observableArray([
+                [ string1, string2, string3 ],
+                [ string1, string2, string3 ],
+                [ string1, string2, string3 ]
+            ])
+        };
+
+        linkObjectObservable(data, shapeOfArrayOfArray);
+        expect(data.array()[0][unlinkMethodLabel]).toBeUndefined();
+        expect(data.array()[1][unlinkMethodLabel]).toBeUndefined();
+        expect(data.array()[2][unlinkMethodLabel]).toBeUndefined();
+    });
+
+    it('should create object observable', () => {
+        const data = {
+            array: ko.observableArray()
+        };
+
+        linkObjectObservable(data, shapeOfArrayOfShape);
+        data.array.push({ string: string1 });
+        data.array.push({ string: string2 });
+        data.array.push({ string: string3 });
+
+        expect(ko.isObservable(data.array()[0].string)).toBe(true);
+        expect(ko.isObservable(data.array()[1].string)).toBe(true);
+        expect(ko.isObservable(data.array()[2].string)).toBe(true);
+    });
+
+    it('should create array observable', () => {
+        const data = {
+            array: ko.observableArray()
+        };
+
+        linkObjectObservable(data, shapeOfArrayOfArray);
+        data.array.push([]);
+        data.array.push([]);
+        data.array.push([]);
+
+        expect(ko.isObservable(data.array()[0])).toBe(true);
+        expect(ko.isObservable(data.array()[1])).toBe(true);
+        expect(ko.isObservable(data.array()[2])).toBe(true);
+    });
+});

@@ -2,7 +2,46 @@ this.knockout = this.knockout || {};
 (function () {
 'use strict';
 
-var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
+// create computed observalbes on context
+//
+// @param {Object} context
+// @param {Object} methods
+function computedAll$$1(context, methods) {
+    eachDict(methods, function (name, method) {
+        context[name] = ko.computed(method, context);
+    });
+}
+
+// create pure computed observalbes on context
+//
+// @param {Object} context
+// @param {Object} methods
+function pureComputedAll$$1(context, methods) {
+    eachDict(methods, function (name, method) {
+        context[name] = ko.pureComputed(method, context);
+    });
+}
+
+var hasConsole = !!window.console;
+
+function error(msg) {
+     hasConsole && console.error(msg);
+}
+
+function warn(msg) {
+     hasConsole && console.warn(msg);
+}
+
+// Check dom node by name
+//
+// @param {Node} target
+// @param {String} name
+// @return {Boolean}
+function isNode(target, name) {
+    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
+
+    return nodeName === name;
+}
 
 // no-ops function
 function noop() {}
@@ -26,8 +65,8 @@ function normalize(name) {
 
 // type checker
 function isType(name) {
-    return function (real) {
-        return Object.prototype.toString.call(real) === '[object ' + name + ']';
+    return function (actual) {
+        return Object.prototype.toString.call(actual) === '[object ' + name + ']';
     };
 }
 
@@ -35,11 +74,13 @@ function isType(name) {
 var isString = isType('String');
 var isNumber = isType('Number');
 var isBoolean = isType('Boolean');
-var isObject$1 = isType('Object');
-var isArray$1 = isType('Array');
+var isObject = isType('Object');
+var isArray = isType('Array');
 var isFunction = isType('Function');
 var isDate = isType('Date');
 var isRegExp = isType('RegExp');
+
+var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
 
 // parse to string to primitive value
 //
@@ -52,9 +93,11 @@ var isRegExp = isType('RegExp');
 function toPrimitive(value) {
     if (typeof value !== 'string') {
         return value;
-    } else if (value === 'True') {
+    } else if (value === '') {
+        return '';
+    } else if (value === 'True' || value === 'true') {
         return true;
-    } else if (value === 'False') {
+    } else if (value === 'False' || value === 'false') {
         return false;
     }
 
@@ -121,8 +164,12 @@ function some(target, checker) {
 // @param {Function} checker
 // @return {Boolean}
 function every(target, checker) {
-    if (!target || !target.length) {
+    if (!target) {
         return false;
+    }
+
+    if (!target.length) {
+        return true;
     }
 
     var result = true;
@@ -167,55 +214,240 @@ function extend(target, dict) {
     var i = keys.length;
 
     while (i--) {
-        target[keys[i]] = dict[keys[i]];
+        var key = keys[i];
+
+        if (hasOwn(dict, key)) {
+            target[key] = dict[key];
+        }
     }
 
     return target;
 }
 
-function apply(selector, contextNode) {
-    if (isString(contextNode)) {
-        contextNode = document.querySelector(contextNode);
+var linkedLabel$$1 = '__hasLinked';
+var unlinkMethodLabel$$1 = '__unlink';
+
+function isArrayObservable(target) {
+    return ko.isObservable(target) && isFunction(target.push);
+}
+
+// Link array observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+function linkArrayObservable$$1(observable, validator) {
+    if (!isArrayObservable(observable) || observable[linkedLabel$$1]) {
+        return;
     }
 
-    var nodes = (contextNode || document).querySelectorAll(selector);
+    var computedObservable = ko.unwrap(observable);
+    var originPush = observable.push;
+    var originUnshift = observable.unshift;
+    var originSplice = observable.splice;
 
-    ko.utils.arrayForEach(nodes, function (node) {
-        var bindingStatements = null;
-        var bindingAttributes = node.getAttribute('data-bind') || '';
+    each(computedObservable, function (item) {
+        linkArrayObservable$$1(item);
+    });
 
-        if (bindingAttributes.indexOf(/\bskip\b\s*:/g) > -1) {
+    observable[unlinkMethodLabel$$1] = function () {
+        observable.push = originPush;
+        observable.unshift = originUnshift;
+        observable.splice = originSplice;
+        delete observable[linkedLabel$$1];
+        delete observable[unlinkMethodLabel$$1];
+    };
+
+    observable.push = function (item) {
+        var validResult = {};
+
+        if (validArray$$1('push', [item], validResult, validator)) {
+            observableArray$$1(validResult['push']);
+            return originPush.call(observable, validResult['push'][0]);
+        }
+    };
+
+    observable.unshift = function (item) {
+        var validResult = {};
+
+        if (validArray$$1('unshift', [item], validResult, validator)) {
+            observableArray$$1(validResult['unshift']);
+            return originUnshift.call(observable, validResult['unshift'][0]);
+        }
+    };
+
+    observable.splice = function () {
+        if (arguments.length < 3) {
             return;
         }
 
-        ko.applyBindings(null, node);
-        bindingStatements = bindingAttributes ? bindingAttributes.split(',') : [];
-        bindingStatements.push('skip: true');
-        node.setAttribute('data-bind', bindingStatements.join(','));
+        var args = [arguments[0], arguments[1]];
+        var result = every(toArray(arguments, 2), function (item, i) {
+            var subValidResult = {};
+            var subResult = validArray$$1('splice', [item], subValidResult, validator);
+
+            if (subResult) {
+                observableArray$$1(subValidResult['splice']);
+                args.push(subValidResult['splice'][0]);
+            }
+
+            return subResult;
+        });
+
+        if (result) {
+            return originSplice.apply(observable, args);
+        }
+    };
+
+    observable[linkedLabel$$1] = true;
+}
+
+// Link object observable with validators
+//
+// @param {Object} data
+// @param {Object} validators
+function linkObjectObservable$$1(data, validators) {
+    eachDict(validators, function (propName, validator) {
+        if (isArray(validator) && validator.length === 1) {
+            linkArrayObservable$$1(data[propName], validator[0]);
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+            linkObjectObservable$$1(data[propName], validator);
+        }
     });
 }
 
-// extend ko.components
-ko.components.apply = ko.components.apply || apply;
-
-// create computed observalbes on context
-//
-// @param {Object} context
-// @param {Object} methods
-function computedAll(context, methods) {
-    eachDict(methods, function (name, method) {
-        context[name] = ko.computed(method, context);
-    });
+function isBasic(value) {
+    return isString(value) || isNumber(value) || isBoolean(value);
 }
 
-// create pure computed observalbes on context
+// Observable array and object items
 //
-// @param {Object} context
-// @param {Object} methods
-function pureComputedAll(context, methods) {
-    eachDict(methods, function (name, method) {
-        context[name] = ko.pureComputed(method, context);
+// @param {Array} data
+function observableArray$$1(data) {
+    each(data, function (item, i) {
+        if (ko.isObservable(item)) {
+            return true;
+        }
+
+        if (isObject(item)) {
+            data[i] = observableObject$$1(item);
+        } else if (isArray(item)) {
+            data[i] = observableArray$$1(item);
+        }
     });
+
+    return ko.observableArray(data);
+}
+
+// Observable object properties
+//
+// @param {Object} data
+function observableObject$$1(data) {
+    eachDict(data, function (propKey, propValue) {
+        if (ko.isObservable(propValue)) {
+            return true;
+        }
+
+        if (isObject(propValue)) {
+            data[propKey] = observableObject$$1(propValue);
+        } else if (isArray(propValue)) {
+            data[propKey] = observableArray$$1(propValue);
+        } else if (propValue === undefined || isBasic(propValue)) {
+            data[propKey] = ko.observable(propValue);
+        } else {
+            data[propKey] = propValue;
+        }
+    });
+
+    return data;
+}
+
+var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
+var observableAttrNameRE = /^k-([\w\-]+)/i;
+var eventAttrNameRE = /^on-([\w\-]+)/i;
+var bindingProvider = new ko.bindingProvider();
+
+function pluckObservableBindingString(nodeName, nodeValue) {
+    var result = nodeName.match(observableAttrNameRE);
+
+    return result ? normalize(result[1]) + ':' + nodeValue : '';
+}
+
+function pluckEventBindingString(nodeName, nodeValue) {
+    var result = nodeName.match(eventAttrNameRE);
+
+    return result ? normalize(result[0]) + ':' + nodeValue : '';
+}
+
+function pluckObservableParams(bindingContext, bindingString) {
+    return bindingProvider.parseBindingsString(bindingString, bindingContext);
+}
+
+function pluckEventParams(bindingContext, bindingString) {
+    var i = 0,
+        handlerParams = void 0,
+        bindingError = void 0;
+    var bindingParents = ko.utils.makeArray(bindingContext.$parents);
+
+    if (bindingParents.indexOf(bindingContext.$data) < 0) {
+        bindingParents.unshift(bindingContext.$data);
+    }
+
+    bindingContext = { $data: null };
+
+    while (bindingContext.$data = bindingParents[i]) {
+        i += 1;
+
+        try {
+            handlerParams = bindingProvider.parseBindingsString(bindingString, bindingContext);
+            bindingError = null;
+            break;
+        } catch (err) {
+            bindingError = err;
+        }
+    }
+
+    if (bindingError) {
+        throw bindingError;
+    }
+
+    return handlerParams;
+}
+
+function pluck$$1(node) {
+    var bindingContext = null;
+    var observableBindingStringList = [];
+    var eventBindingStringList = [];
+
+    var result = ko.utils.makeArray(node.attributes).reduce(function (params, node) {
+        var nodeName = node.nodeName;
+        var nodeValue = node.nodeValue;
+
+        if (invalidAttrNameRE.test(nodeName)) {
+            return params;
+        }
+
+        if (observableAttrNameRE.test(nodeName)) {
+            observableBindingStringList.push(pluckObservableBindingString(nodeName, nodeValue));
+        } else if (eventAttrNameRE.test(nodeName)) {
+            eventBindingStringList.push(pluckEventBindingString(nodeName, nodeValue));
+        } else {
+            params[normalize(nodeName)] = toPrimitive(nodeValue);
+        }
+
+        return params;
+    }, {});
+
+    var eventBindingString = '{' + eventBindingStringList.join(',') + '}';
+    var observableBindingString = '{' + observableBindingStringList.join(',') + '}';
+
+    if (eventBindingString || observableBindingString) {
+        bindingContext = ko.contextFor(node);
+    }
+
+    extend(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString));
+    extend(result, observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
+
+    return result;
 }
 
 function interopDefault(ex) {
@@ -254,17 +486,17 @@ module.exports = function (css, options) {
 var insert = interopDefault(index);
 
 // empty component template
-var emptyTemplate = '<noscript><!-- empty template --></noscript>';
+var emptyTemplate$$1 = '<noscript><!-- empty template --></noscript>';
 
 // throw error with plugin name
 //
 // @param {String} message
-function throwError(message) {
+function throwError$$1(message) {
     throw new Error('knockout.register: ' + message);
 }
 
 // insert dom stylesheet
-function insertCss() {
+function insertCss$$1() {
     return insert.apply(null, arguments);
 }
 
@@ -273,7 +505,7 @@ function insertCss() {
 // @param {Object} dest
 // @param {Object} opts
 // @param {Array|Object} mixins
-function mixin(dest, opts, mixins) {
+function mixin$$1(dest, opts, mixins) {
 
     // opts is optional
     if (!mixins && opts) {
@@ -292,20 +524,20 @@ function mixin(dest, opts, mixins) {
     // cache last opts
     dest.opts = opts = opts || {};
 
-    ko.utils.arrayForEach(mixins, function (mixin) {
+    ko.utils.arrayForEach(mixins, function (mixin$$1) {
         var mixinCopy = null;
 
         // pre mix
-        if (isFunction(mixin.preMix)) {
-            mixinCopy = ko.utils.extend({}, mixin);
+        if (isFunction(mixin$$1.preMix)) {
+            mixinCopy = ko.utils.extend({}, mixin$$1);
             mixinCopy.preMix(opts);
         }
 
-        ko.utils.extend(dest, mixinCopy || mixin);
+        ko.utils.extend(dest, mixinCopy || mixin$$1);
 
         // post mix
-        if (isFunction(mixin.postMix)) {
-            mixin.postMix.call(dest, opts);
+        if (isFunction(mixin$$1.postMix)) {
+            mixin$$1.postMix.call(dest, opts);
         }
     });
 
@@ -316,114 +548,14 @@ function mixin(dest, opts, mixins) {
 }
 
 // extend ko.utils
-ko.utils.mixin = ko.utils.mixin || mixin;
-ko.utils.insertCss = ko.utils.insertCss || insertCss;
-
-var defaultSpy = document.createComment('spy');
-
-function getVmForNode(node) {
-    if (!node) {
-        return null;
-    }
-
-    var spy = node.lastElementChild || defaultSpy;
-    var useDefault = spy === defaultSpy;
-
-    if (useDefault) {
-        node.appendChild(spy);
-    }
-
-    var vm = ko.dataFor(spy);
-
-    if (useDefault) {
-        node.removeChild(spy);
-    }
-
-    return vm;
-}
-
-// query element by selector
-//
-// @param {String} selector
-// @param {Node} context
-function querySelector(selector) {
-    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
-
-    return getVmForNode(context.querySelector(selector));
-}
-
-// query elements by selector
-//
-// @param {String} selector
-// @param {Node} context
-function querySelectorAll(selector) {
-    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
-
-    var nodes = ko.utils.makeArray(context.querySelectorAll(selector));
-
-    return ko.utils.arrayMap(nodes, function (node) {
-        return getVmForNode(node);
-    });
-}
-
-// query element by id
-//
-// @param {String} selector
-// @param {Node} context
-function getElementById() {
-    return getVmForNode(context.getElementById(selector));
-}
-
-// query elements by tag name
-//
-// @param {String} selector
-// @param {Node} context
-function getElementsByTagName(selector) {
-    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
-
-    var nodes = ko.utils.makeArray(context.getElementsByTagName(selector));
-
-    return ko.utils.arrayMap(nodes, function (node) {
-        return getVmForNode(node);
-    });
-}
-
-// query elements by class name
-//
-// @param {String} selector
-// @param {Node} context
-function getElementsByClassName(selector) {
-    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
-
-    var nodes = ko.utils.makeArray(context.getElementsByClassName(selector));
-
-    return ko.utils.arrayMap(nodes, function (node) {
-        return getVmForNode(node);
-    });
-}
-
-// extend ko.components
-ko.components.querySelector = querySelector;
-ko.components.querySelectorAll = querySelectorAll;
-ko.components.getElementById = getElementById;
-ko.components.getElementsByTagName = getElementsByTagName;
-ko.components.getElementsByClassName = getElementsByClassName;
-
-var hasConsole = !!window.console;
-
-function error(msg) {
-     hasConsole && console.error(msg);
-}
-
-function warn(msg) {
-     hasConsole && console.warn(msg);
-}
+ko.utils.mixin = ko.utils.mixin || mixin$$1;
+ko.utils.insertCss = ko.utils.insertCss || insertCss$$1;
 
 // Pluck dom node from given template
 //
 // @param {Array|String|Node} tpl
 function pluckNodes(tpl) {
-    if (isArray$1(tpl)) {
+    if (isArray(tpl)) {
         return tpl;
     }
 
@@ -530,104 +662,73 @@ function slot$$1(srcTpl, destTpl) {
     return srcNodes;
 }
 
-// Check dom node by name
+var modulePolyfill = {
+    defaults: {},
+    template: emptyTemplate$$1
+};
+
+// Transform transiton component module to native component module
 //
-// @param {Node} target
-// @param {String} name
-// @return {Boolean}
-function isNode(target, name) {
-    var nodeName = target && target.nodeName ? target.nodeName.toLowerCase() : '';
+// @param {Object} module Transiton component module
+// @return {Object} Native component module
+function transform$$1(module) {
+    var finalModule = { constructor: function constructor() {} };
 
-    return nodeName === name;
-}
+    extend(finalModule, modulePolyfill);
+    extend(finalModule, module);
 
-var invalidAttrNameRE = /^(?:data-[\w-]+|params|id|class|style)\b/i;
-var observableAttrNameRE = /^k-([\w\-]+)/i;
-var eventAttrNameRE = /^on-([\w\-]+)/i;
-var bindingProvider = new ko.bindingProvider();
+    var name = finalModule.name;
+    var constructor = finalModule.constructor;
+    var defaults = finalModule.defaults;
+    var props = finalModule.props;
+    var mixins = finalModule.mixins;
+    var methods = finalModule.methods;
+    var computed = finalModule.computed;
+    var pureComputed = finalModule.pureComputed;
+    var style = finalModule.style;
+    var template = finalModule.template;
 
-function pluckObservableBindingString(nodeName, nodeValue) {
-    var result = nodeName.match(observableAttrNameRE);
 
-    return result ? normalize(result[1]) + ':' + nodeValue : '';
-}
+    insertCss$$1(module.style);
+    extend(constructor.prototype, methods);
 
-function pluckEventBindingString(nodeName, nodeValue) {
-    var result = nodeName.match(eventAttrNameRE);
+    return {
+        viewModel: {
+            createViewModel: function createViewModel(params, componentInfo) {
+                componentInfo.name = name;
 
-    return result ? normalize(result[0]) + ':' + nodeValue : '';
-}
+                var opts = {};
 
-function pluckObservableParams(bindingContext, bindingString) {
-    return bindingProvider.parseBindingsString(bindingString, bindingContext);
-}
+                extend(opts, defaults);
+                extend(opts, ko.toJS(params));
+                extend(opts, pluck$$1(componentInfo.element));
 
-function pluckEventParams(bindingContext, bindingString) {
-    var i = 0,
-        handlerParams = void 0,
-        bindingError = void 0;
-    var bindingParents = ko.utils.makeArray(bindingContext.$parents);
+                var vm = new constructor(opts, componentInfo);
 
-    if (bindingParents.indexOf(bindingContext.$data) < 0) {
-        bindingParents.unshift(bindingContext.$data);
-    }
+                if (props) {
+                    var validOpts = valid$$1(opts, props);
+                    observableObject$$1(validOpts);
+                    linkObjectObservable$$1(validOpts, props);
+                    extend(vm, validOpts);
+                }
 
-    bindingContext = { $data: null };
+                mixins && mixin$$1(vm, opts, mixins);
+                computed && computedAll$$1(vm, computed);
+                pureComputed && pureComputedAll$$1(vm, pureComputed);
 
-    while (bindingContext.$data = bindingParents[i]) {
-        i += 1;
+                vm.$opts = opts;
+                vm.$defaults = defaults;
+                vm.$info = vm.componentInfo = componentInfo;
 
-        try {
-            handlerParams = bindingProvider.parseBindingsString(bindingString, bindingContext);
-            bindingError = null;
-            break;
-        } catch (err) {
-            bindingError = err;
-        }
-    }
+                delete vm.$opts['$raw'];
+                delete vm.$defaults['$raw'];
 
-    if (bindingError) {
-        throw bindingError;
-    }
-
-    return handlerParams;
-}
-
-function pluck$$1(node) {
-    var bindingContext = null;
-    var observableBindingStringList = [];
-    var eventBindingStringList = [];
-
-    var result = ko.utils.makeArray(node.attributes).reduce(function (params, node) {
-        var nodeName = node.nodeName;
-        var nodeValue = node.nodeValue;
-
-        if (invalidAttrNameRE.test(nodeName)) {
-            return params;
-        }
-
-        if (observableAttrNameRE.test(nodeName)) {
-            observableBindingStringList.push(pluckObservableBindingString(nodeName, nodeValue));
-        } else if (eventAttrNameRE.test(nodeName)) {
-            eventBindingStringList.push(pluckEventBindingString(nodeName, nodeValue));
-        } else {
-            params[normalize(nodeName)] = toPrimitive(nodeValue);
-        }
-
-        return params;
-    }, {});
-
-    var eventBindingString = '{' + eventBindingStringList.join(',') + '}';
-    var observableBindingString = '{' + observableBindingStringList.join(',') + '}';
-
-    if (eventBindingString || observableBindingString) {
-        bindingContext = ko.contextFor(node);
-    }
-
-    extend(result, eventBindingString && pluckEventParams(bindingContext, eventBindingString));
-    extend(result, observableBindingString && pluckObservableParams(bindingContext, observableBindingString));
-
-    return result;
+                return vm;
+            }
+        },
+        synchronous: true,
+        template: template
+    };
 }
 
 function is(constructor) {
@@ -645,8 +746,8 @@ ko.types = ko.types || {
     String: isString,
     Number: isNumber,
     Boolean: isBoolean,
-    Object: isObject$1,
-    Array: isArray$1,
+    Object: isObject,
+    Array: isArray,
     Function: isFunction,
     Date: isDate,
     RegExp: isRegExp,
@@ -657,8 +758,8 @@ ko.types = ko.types || {
     string: { type: isString, default: '' },
     number: { type: isNumber, default: 0 },
     boolean: { type: isBoolean, default: false },
-    object: { type: isObject$1, default: {} },
-    array: { type: isArray$1, default: [] },
+    object: { type: isObject, default: {} },
+    array: { type: isArray, default: [] },
     function: { type: isFunction, default: noop },
     date: { type: isDate, default: new Date() },
     regexp: { type: isRegExp, default: null },
@@ -723,7 +824,7 @@ var buildInValidators = Object.keys(ko.types);
 // @param {Any} validator
 // @return {ANy}
 function defineValidator(validator) {
-    return isObject$1(validator) && hasOwn(validator, 'type') ? validator.type : validator;
+    return isObject(validator) && hasOwn(validator, 'type') ? validator.type : validator;
 }
 
 // Get validator name
@@ -734,9 +835,9 @@ function defineValidatorName(validator) {
     var name = '';
     var computedValidator = defineValidator(validator);
 
-    if (isArray$1(computedValidator)) {
+    if (isArray(computedValidator)) {
         name = computedValidator.length === 1 ? 'arrayOf' : 'oneOfType';
-    } else if (isObject$1(computedValidator)) {
+    } else if (isObject(computedValidator)) {
         name = 'shape';
     } else {
         each(buildInValidators, function (key) {
@@ -758,7 +859,7 @@ function defineValidatorName(validator) {
 // @param {Object|Function} validator
 // @return {Boolean}
 function validProp$$1(propName, propValue, data, validator) {
-    var isWrapped = isObject$1(validator);
+    var isWrapped = isObject(validator);
     var isObservable = ko.isObservable(propValue);
     var required = isWrapped ? validator.required : false;
     var defaultValue = isWrapped ? validator.default : undefined;
@@ -805,11 +906,11 @@ function validObject$$1(propName, propValue, data, validators) {
         var validator = validators[subPropName];
         var subPropValue = computedPropValue ? computedPropValue[subPropName] : undefined;
 
-        if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+        if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
             return validProp$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
             return validObject$$1(subPropName, subPropValue, resultObject, validator);
-        } else if (isArray$1(validator) || isArray$1(validator.type)) {
+        } else if (isArray(validator) || isArray(validator.type)) {
             var subValidator = validator.type ? validator.type : validator;
             var len = subValidator.length;
 
@@ -852,24 +953,30 @@ function validWithin$$1(propName, propValue, data, validators) {
 
 // Run validator on given array prop
 //
-// @param {String} propName
+// @param {String|Number} propName
 // @param {Array} propValue
-// @param {Object} data
+// @param {Object|Array} data
 // @param {Object|Array|Function} validator
 // @return {Boolean}
 function validArray$$1(propName, propValue, data, validator) {
+    if (propValue === undefined) {
+        data[propName] = [];
+        return true;
+    }
+
     var computedPropValue = ko.unwrap(propValue);
     var validMethod = void 0;
 
-    if (isFunction(validator) || isObject$1(validator) && isFunction(validator.type)) {
+    if (isFunction(validator) || isObject(validator) && isFunction(validator.type)) {
         validMethod = validProp$$1;
-    } else if (isObject$1(validator) && !hasOwn(validator, 'type')) {
+    } else if (isObject(validator) && !hasOwn(validator, 'type')) {
         validMethod = validObject$$1;
-    } else if (isArray$1(validator) || isArray$1(validator.type)) {
+    } else if (isArray(validator) || isArray(validator.type)) {
         if (validator.length > 1) {
             validMethod = validWithin$$1;
         } else {
             validMethod = validArray$$1;
+            validator = validator[0];
         }
     } else {
         error('Invalid validator: ' + validator);
@@ -877,9 +984,15 @@ function validArray$$1(propName, propValue, data, validator) {
     }
 
     var resultArray = [];
-    var result = every(computedPropValue, function (item, i) {
-        return validMethod(i, item, resultArray, validator);
-    });
+    var result = false;
+
+    if (isArray(computedPropValue)) {
+        result = every(computedPropValue, function (item, i) {
+            return validMethod(i, item, resultArray, validator);
+        });
+    } else {
+        result = validMethod(0, propValue, resultArray, validator);
+    }
 
     data[propName] = result && ko.isObservable(propValue) ? propValue : resultArray;
 
@@ -891,7 +1004,7 @@ function validArray$$1(propName, propValue, data, validator) {
 // @param {Object} data
 // @param {Object} validators
 function valid$$1(data, validators) {
-    if (!isObject$1(data) || data === null) {
+    if (!isObject(data) || data === null) {
         error('Invalid props: ' + data);
         return null;
     } else {
@@ -901,135 +1014,6 @@ function valid$$1(data, validators) {
 
         return validData['data'];
     }
-}
-
-var linkedLabel$$1 = '__hasLinked';
-var unlinkMethodLabel$$1 = '__unlink';
-
-function isArrayObservable(target) {
-    return ko.isObservable(target) && isFunction(target.push);
-}
-
-// Link array observable with validators
-//
-// @param {Function} observable
-// @param {Object|Function} validator
-function linkArrayObservable$$1(observable, validator) {
-    if (!isArrayObservable(observable) || observable[linkedLabel$$1]) {
-        return;
-    }
-
-    var originPush = observable.push;
-    var originUnshift = observable.unshift;
-    var originSplice = observable.splice;
-
-    observable[unlinkMethodLabel$$1] = function () {
-        observable.push = originPush;
-        observable.unshift = originUnshift;
-        observable.splice = originSplice;
-        delete observable[linkedLabel$$1];
-        delete observable[unlinkMethodLabel$$1];
-    };
-
-    observable.push = function (item) {
-        var validResult = {};
-
-        if (validArray$$1('push', [item], validResult, validator)) {
-            originPush.call(observable, validResult['push'][0]);
-        }
-    };
-
-    observable.unshift = function (item) {
-        var validResult = {};
-
-        if (validArray$$1('unshift', [item], validResult, validator)) {
-            originUnshift.call(observable, validResult['unshift'][0]);
-        }
-    };
-
-    observable.splice = function () {
-        if (arguments.length < 3) {
-            return;
-        }
-
-        var args = [arguments[0], arguments[1]];
-        var result = every(toArray(arguments, 2), function (item, i) {
-            var subValidResult = {};
-            var subResult = validArray$$1('splice', [item], subValidResult, validator);
-
-            if (subResult) {
-                args.push(subValidResult['splice'][0]);
-            }
-
-            return subResult;
-        });
-
-        if (result) {
-            originSplice.apply(observable, args);
-        }
-    };
-
-    observable[linkedLabel$$1] = true;
-}
-
-// Link object observable with validators
-//
-// @param {Object} data
-// @param {Object} validators
-function linkObjectObservable$$1(data, validators) {
-    eachDict(validators, function (propName, validator) {
-        if (isArray(validator) && validator.length === 1) {
-            linkArrayObservable$$1(data[propName], validator[0]);
-        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
-            linkObjectObservable$$1(data[propName], validator);
-        }
-    });
-}
-
-function isBasic(value) {
-    return isString(value) || isNumber(value) || isBoolean(value);
-}
-
-// Observable array and object items
-//
-// @param {Array} data
-function observableArray$$1(data) {
-    each(data, function (item, i) {
-        if (ko.isObservable(item)) {
-            return true;
-        }
-
-        if (isObject$1(item)) {
-            data[i] = observableObject$$1(item);
-        } else if (isArray$1(item)) {
-            data[i] = observableArray$$1(item);
-        }
-    });
-
-    return ko.observableArray(data);
-}
-
-// Observable object properties
-//
-// @param {Object} data
-function observableObject$$1(data) {
-    eachDict(data, function (propKey, propValue) {
-        if (ko.isObservable(propValue)) {
-            return true;
-        }
-
-        if (isObject$1(propValue)) {
-            data[propKey] = observableObject$$1(propValue);
-        } else if (isArray$1(propValue)) {
-            data[propKey] = observableArray$$1(propValue);
-        } else if (isBasic(propValue)) {
-            data[propKey] = ko.observable(propValue);
-        } else {
-            data[propKey] = propValue;
-        }
-    });
-
-    return data;
 }
 
 var slotLoader = {
@@ -1054,7 +1038,7 @@ var slotLoader = {
             return callback(null);
         }
 
-        if (vmConfig && isObject$1(vmConfig)) {
+        if (vmConfig && isObject(vmConfig)) {
             if (!vmConfig.createViewModel) {
                 return callback(null);
             }
@@ -1092,7 +1076,7 @@ var lifeComponentLoader = {
     loadViewModel: function loadViewModel(name, vmConfig, callback) {
         var originalCreateViewModel = null;
 
-        if (vmConfig && isObject$1(vmConfig) && isFunction(vmConfig.createViewModel)) {
+        if (vmConfig && isObject(vmConfig) && isFunction(vmConfig.createViewModel)) {
             originalCreateViewModel = vmConfig.createViewModel;
             vmConfig.createViewModel = function (params, componentInfo) {
                 var vm = new originalCreateViewModel(params, componentInfo);
@@ -1124,74 +1108,120 @@ var lifeComponentLoader = {
 
 ko.components.loaders.unshift(lifeComponentLoader);
 
-var modulePolyfill = {
-    defaults: {},
-    template: emptyTemplate
-};
+function apply(selector, contextNode) {
+    if (isString(contextNode)) {
+        contextNode = document.querySelector(contextNode);
+    }
 
-// Transform transiton component module to native component module
-//
-// @param {Object} module Transiton component module
-// @return {Object} Native component module
-function transform(module) {
-    var finalModule = { constructor: function constructor() {} };
+    var nodes = (contextNode || document).querySelectorAll(selector);
 
-    extend(finalModule, modulePolyfill);
-    extend(finalModule, module);
+    ko.utils.arrayForEach(nodes, function (node) {
+        var bindingStatements = null;
+        var bindingAttributes = node.getAttribute('data-bind') || '';
 
-    var name = finalModule.name;
-    var constructor = finalModule.constructor;
-    var defaults = finalModule.defaults;
-    var props = finalModule.props;
-    var mixins = finalModule.mixins;
-    var methods = finalModule.methods;
-    var computed = finalModule.computed;
-    var pureComputed = finalModule.pureComputed;
-    var style = finalModule.style;
-    var template = finalModule.template;
+        if (bindingAttributes.indexOf(/\bskip\b\s*:/g) > -1) {
+            return;
+        }
 
-
-    insertCss(module.style);
-    extend(constructor.prototype, methods);
-
-    return {
-        viewModel: {
-            createViewModel: function createViewModel(params, componentInfo) {
-                componentInfo.name = name;
-
-                var opts = {};
-
-                extend(opts, defaults);
-                extend(opts, ko.toJS(params));
-                extend(opts, pluck$$1(componentInfo.element));
-
-                var vm = new constructor(opts, componentInfo);
-
-                if (props) {
-                    var validOpts = valid$$1(opts, props);
-                    // linkObjectObservable(validOpts, props);
-                    observableObject$$1(validOpts);
-                    extend(vm, validOpts);
-                }
-
-                mixins && mixin(vm, opts, mixins);
-                computed && computedAll(vm, computed);
-                pureComputed && pureComputedAll(vm, pureComputed);
-
-                vm.$opts = opts;
-                vm.$defaults = defaults;
-                vm.$info = vm.componentInfo = componentInfo;
-
-                delete vm.$opts['$raw'];
-                delete vm.$defaults['$raw'];
-
-                return vm;
-            }
-        },
-        synchronous: true,
-        template: template
-    };
+        ko.applyBindings(null, node);
+        bindingStatements = bindingAttributes ? bindingAttributes.split(',') : [];
+        bindingStatements.push('skip: true');
+        node.setAttribute('data-bind', bindingStatements.join(','));
+    });
 }
+
+// extend ko.components
+ko.components.apply = ko.components.apply || apply;
+
+var defaultSpy = document.createComment('spy');
+
+function getVmForNode(node) {
+    if (!node) {
+        return null;
+    }
+
+    var spy = node.lastElementChild || defaultSpy;
+    var useDefault = spy === defaultSpy;
+
+    if (useDefault) {
+        node.appendChild(spy);
+    }
+
+    var vm = ko.dataFor(spy);
+
+    if (useDefault) {
+        node.removeChild(spy);
+    }
+
+    return vm;
+}
+
+// query element by selector
+//
+// @param {String} selector
+// @param {Node} context
+function querySelector(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+
+    return getVmForNode(context.querySelector(selector));
+}
+
+// query elements by selector
+//
+// @param {String} selector
+// @param {Node} context
+function querySelectorAll(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+
+    var nodes = ko.utils.makeArray(context.querySelectorAll(selector));
+
+    return ko.utils.arrayMap(nodes, function (node) {
+        return getVmForNode(node);
+    });
+}
+
+// query element by id
+//
+// @param {String} selector
+// @param {Node} context
+function getElementById() {
+    return getVmForNode(context.getElementById(selector));
+}
+
+// query elements by tag name
+//
+// @param {String} selector
+// @param {Node} context
+function getElementsByTagName(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+
+    var nodes = ko.utils.makeArray(context.getElementsByTagName(selector));
+
+    return ko.utils.arrayMap(nodes, function (node) {
+        return getVmForNode(node);
+    });
+}
+
+// query elements by class name
+//
+// @param {String} selector
+// @param {Node} context
+function getElementsByClassName(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+
+    var nodes = ko.utils.makeArray(context.getElementsByClassName(selector));
+
+    return ko.utils.arrayMap(nodes, function (node) {
+        return getVmForNode(node);
+    });
+}
+
+// extend ko.components
+ko.components.querySelector = querySelector;
+ko.components.querySelectorAll = querySelectorAll;
+ko.components.getElementById = getElementById;
+ko.components.getElementsByTagName = getElementsByTagName;
+ko.components.getElementsByClassName = getElementsByClassName;
 
 // Register transition component module
 //
@@ -1199,7 +1229,7 @@ function transform(module) {
 // @param {Object} module Transition component module if first param is component name
 function register(module) {
     if (!module) {
-        throwError('Component name or module is required.');
+        throwError$$1('Component name or module is required.');
     }
 
     // native component module
@@ -1212,10 +1242,10 @@ function register(module) {
 
 
     if (!exist(module, 'name')) {
-        throwError('Component name is required.');
+        throwError$$1('Component name is required.');
     }
 
-    return ko.components._register(name, transform(module));
+    return ko.components._register(name, transform$$1(module));
 }
 
 ko.components._register = ko.components._register || ko.components.register;

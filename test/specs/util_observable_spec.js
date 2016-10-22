@@ -69,6 +69,14 @@ describe('observableObject', () => {
         expect(result.string()).toBe(string);
     });
 
+    it('should create observable properties', () => {
+        const object = { string: undefined };
+        const result = observableObject(object);
+
+        expect(ko.isObservable(result.string)).toBe(true);
+        expect(result.string()).toBe(undefined);
+    });
+
     it('should create observable properties(object item)', () => {
         const object = { string: { string: string } };
         const result = observableObject(object);
@@ -77,7 +85,7 @@ describe('observableObject', () => {
         expect(result.string.string()).toBe(string);
     });
 
-    it('should create observable properties(array item)', () => {
+    it('should not create observable properties(array item)', () => {
         const object = { string: [ string ] };
         const result = observableObject(object);
 

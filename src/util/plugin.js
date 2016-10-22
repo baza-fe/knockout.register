@@ -1,7 +1,7 @@
 import insert from 'insert-css';
 import {
     isFunction
-} from './lang';
+} from './';
 
 // empty component template
 export const emptyTemplate = '<noscript><!-- empty template --></noscript>';

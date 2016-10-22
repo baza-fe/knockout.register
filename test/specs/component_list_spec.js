@@ -1,3 +1,4 @@
+import '../../src/';
 import Avatar from '../samples/components/avatar';
 import List from '../samples/components/list';
 

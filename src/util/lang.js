@@ -1,4 +1,3 @@
-const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-]?\d?)$/i;
 
 // no-ops function
 export function noop() {};
@@ -22,8 +21,8 @@ export function normalize(name) {
 
 // type checker
 export function isType(name) {
-    return function (real) {
-        return Object.prototype.toString.call(real) === `[object ${name}]`;
+    return function (actual) {
+        return Object.prototype.toString.call(actual) === `[object ${name}]`;
     };
 };
 
@@ -37,6 +36,8 @@ export const isFunction = isType('Function');
 export const isDate = isType('Date');
 export const isRegExp = isType('RegExp');
 
+const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
+
 // parse to string to primitive value
 //
 // "true" => true
@@ -48,9 +49,11 @@ export const isRegExp = isType('RegExp');
 export function toPrimitive(value) {
     if (typeof value !== 'string') {
         return value;
-    } else if (value === 'True') {
+    } else if (value === '') {
+        return '';
+    } else if (value === 'True' || value === 'true') {
         return true;
-    } else if (value === 'False') {
+    } else if (value === 'False' || value === 'false') {
         return false;
     }
 
@@ -114,8 +117,12 @@ export function some(target, checker) {
 // @param {Function} checker
 // @return {Boolean}
 export function every(target, checker) {
-    if (!target || !target.length) {
+    if (!target) {
         return false;
+    }
+
+    if (!target.length) {
+        return true;
     }
 
     let result = true;
@@ -160,7 +167,11 @@ export function extend(target, dict) {
     let i = keys.length;
 
     while (i--) {
-        target[keys[i]] = dict[keys[i]];
+        let key = keys[i];
+
+        if (hasOwn(dict, key)) {
+            target[key] = dict[key];
+        }
     }
 
     return target;

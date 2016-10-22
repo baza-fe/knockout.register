@@ -7,7 +7,7 @@ import {
     hasOwn,
     warn,
     error
-} from './index';
+} from './';
 import {
     defineValidatorName
 } from '../core/validator';
@@ -136,12 +136,17 @@ export function validWithin(propName, propValue, data, validators) {
 
 // Run validator on given array prop
 //
-// @param {String} propName
+// @param {String|Number} propName
 // @param {Array} propValue
-// @param {Object} data
+// @param {Object|Array} data
 // @param {Object|Array|Function} validator
 // @return {Boolean}
 export function validArray(propName, propValue, data, validator) {
+    if (propValue === undefined) {
+        data[propName] = [];
+        return true;
+    }
+
     const computedPropValue = ko.unwrap(propValue);
     let validMethod;
 
@@ -154,6 +159,7 @@ export function validArray(propName, propValue, data, validator) {
             validMethod = validWithin;
         } else {
             validMethod = validArray;
+            validator = validator[0];
         }
     } else {
         error(`Invalid validator: ${validator}`);
@@ -161,9 +167,15 @@ export function validArray(propName, propValue, data, validator) {
     }
 
     const resultArray = [];
-    const result = every(computedPropValue, (item, i) => {
-        return validMethod(i, item, resultArray, validator);
-    });
+    let result = false;
+
+    if (isArray(computedPropValue)) {
+        result = every(computedPropValue, (item, i) => {
+            return validMethod(i, item, resultArray, validator);
+        });
+    } else {
+        result = validMethod(0, propValue, resultArray, validator);
+    }
 
     data[propName] = (result && ko.isObservable(propValue))
         ? propValue

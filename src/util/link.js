@@ -1,11 +1,15 @@
 import {
     hasOwn,
     every,
+    each,
     eachDict,
     toArray,
+    isArray,
+    isObject,
     isFunction,
-    validArray
-} from './index';
+    validArray,
+    observableArray
+} from './';
 
 export const linkedLabel = '__hasLinked';
 export const unlinkMethodLabel = '__unlink';
@@ -23,9 +27,14 @@ export function linkArrayObservable(observable, validator) {
         return;
     }
 
+    const computedObservable = ko.unwrap(observable);
     const originPush = observable.push;
     const originUnshift = observable.unshift;
     const originSplice = observable.splice;
+
+    each(computedObservable, (item) => {
+        linkArrayObservable(item);
+    });
 
     observable[unlinkMethodLabel] = () => {
         observable.push = originPush;
@@ -39,7 +48,8 @@ export function linkArrayObservable(observable, validator) {
         const validResult = {};
 
         if (validArray('push', [ item ], validResult, validator)) {
-            originPush.call(observable, validResult['push'][0]);
+            observableArray(validResult['push']);
+            return originPush.call(observable, validResult['push'][0]);
         }
     };
 
@@ -47,7 +57,8 @@ export function linkArrayObservable(observable, validator) {
         const validResult = {};
 
         if (validArray('unshift', [ item ], validResult, validator)) {
-            originUnshift.call(observable, validResult['unshift'][0]);
+            observableArray(validResult['unshift']);
+            return originUnshift.call(observable, validResult['unshift'][0]);
         }
     };
 
@@ -62,6 +73,7 @@ export function linkArrayObservable(observable, validator) {
             const subResult = validArray('splice', [ item ], subValidResult, validator);
 
             if (subResult) {
+                observableArray(subValidResult['splice']);
                 args.push(subValidResult['splice'][0]);
             }
 
@@ -69,7 +81,7 @@ export function linkArrayObservable(observable, validator) {
         });
 
         if (result) {
-            originSplice.apply(observable, args);
+            return originSplice.apply(observable, args);
         }
     };
 
