@@ -96,6 +96,17 @@ describe('linkArrayObservable.push', () => {
         expect(ob()[2]).toBe(string3);
     });
 
+    it('should update works', () => {
+        const ob = ko.observableArray();
+
+        linkArrayObservable(ob, ko.types.String);
+        ob.push(string1);
+        ob([])
+        ob.push(string2);
+
+        expect(ob()[0]).toBe(string2);
+    });
+
     it('should log error: Invalid prop', () => {
         const ob = ko.observableArray([]);
 
@@ -141,6 +152,17 @@ describe('linkArrayObservable.unshift', () => {
         expect(ob()[2]).toBe(string1);
     });
 
+    it('should update works', () => {
+        const ob = ko.observableArray();
+
+        linkArrayObservable(ob, ko.types.String);
+        ob.unshift(string1);
+        ob([])
+        ob.unshift(string2);
+
+        expect(ob()[0]).toBe(string2);
+    });
+
     it('should log error: Invalid prop', () => {
         const ob = ko.observableArray([]);
 
@@ -182,6 +204,17 @@ describe('linkArrayObservable.splice', () => {
         expect(ob()[0]).toBe(string1);
         expect(ob()[1]).toBe(string2);
         expect(ob()[2]).toBe(string3);
+    });
+
+    it('should update works', () => {
+        const ob = ko.observableArray();
+
+        linkArrayObservable(ob, ko.types.String);
+        ob.splice(0, 0, string1);
+        ob([])
+        ob.splice(0, 0, string2);
+
+        expect(ob()[0]).toBe(string2);
     });
 
     it('should log error: Invalid prop', () => {
