@@ -3,6 +3,7 @@ import {
     every,
     each,
     eachDict,
+    extend,
     toArray,
     isArray,
     isObject,
@@ -30,18 +31,30 @@ export function linkArrayObservable(observable, validator) {
         linkArrayObservable(item);
     });
     observable.subscribe((changes) => {
-        const validResult = {};
         const items = [];
+        const indexes = [];
+        const validResult = {};
 
         each(changes, (change) => {
             if (change.status === 'added') {
                 items.push(change.value);
+                indexes.push(change.index);
             }
         });
 
-        if (validArray('link', items, validResult, validator)) {
-            observableArray(observable());
+        if (!validArray('link', items, validResult, validator)) {
+            return;
         }
+
+        const source = observable();
+
+        if (items.length) {
+            each(validResult['link'], (validItem, i) => {
+                source[indexes[i]] = validItem;
+            });
+        }
+
+        observableArray(source);
     }, null, 'arrayChange');
     observable[linkedLabel] = true;
 };
