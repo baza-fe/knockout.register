@@ -225,7 +225,6 @@ function extend(target, dict) {
 }
 
 var linkedLabel$$1 = '__hasLinked';
-var unlinkMethodLabel$$1 = '__unlink';
 
 function isArrayObservable(target) {
     return ko.isObservable(target) && isFunction(target.push);
@@ -240,64 +239,35 @@ function linkArrayObservable$$1(observable, validator) {
         return;
     }
 
-    var computedObservable = ko.unwrap(observable);
-    var originPush = observable.push;
-    var originUnshift = observable.unshift;
-    var originSplice = observable.splice;
-
-    each(computedObservable, function (item) {
+    each(ko.unwrap(observable), function (item) {
         linkArrayObservable$$1(item);
     });
-
-    observable[unlinkMethodLabel$$1] = function () {
-        observable.push = originPush;
-        observable.unshift = originUnshift;
-        observable.splice = originSplice;
-        delete observable[linkedLabel$$1];
-        delete observable[unlinkMethodLabel$$1];
-    };
-
-    observable.push = function (item) {
+    observable.subscribe(function (changes) {
+        var items = [];
+        var indexes = [];
         var validResult = {};
 
-        if (validArray$$1('push', [item], validResult, validator)) {
-            observableArray$$1(validResult['push']);
-            return originPush.call(observable, validResult['push'][0]);
-        }
-    };
+        each(changes, function (change) {
+            if (change.status === 'added') {
+                items.push(change.value);
+                indexes.push(change.index);
+            }
+        });
 
-    observable.unshift = function (item) {
-        var validResult = {};
-
-        if (validArray$$1('unshift', [item], validResult, validator)) {
-            observableArray$$1(validResult['unshift']);
-            return originUnshift.call(observable, validResult['unshift'][0]);
-        }
-    };
-
-    observable.splice = function () {
-        if (arguments.length < 3) {
+        if (!validArray$$1('link', items, validResult, validator)) {
             return;
         }
 
-        var args = [arguments[0], arguments[1]];
-        var result = every(toArray(arguments, 2), function (item, i) {
-            var subValidResult = {};
-            var subResult = validArray$$1('splice', [item], subValidResult, validator);
+        var source = observable();
 
-            if (subResult) {
-                observableArray$$1(subValidResult['splice']);
-                args.push(subValidResult['splice'][0]);
-            }
-
-            return subResult;
-        });
-
-        if (result) {
-            return originSplice.apply(observable, args);
+        if (items.length) {
+            each(validResult['link'], function (validItem, i) {
+                source[indexes[i]] = validItem;
+            });
         }
-    };
 
+        observableArray$$1(source);
+    }, null, 'arrayChange');
     observable[linkedLabel$$1] = true;
 }
 
