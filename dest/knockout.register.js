@@ -243,18 +243,30 @@ function linkArrayObservable$$1(observable, validator) {
         linkArrayObservable$$1(item);
     });
     observable.subscribe(function (changes) {
-        var validResult = {};
         var items = [];
+        var indexes = [];
+        var validResult = {};
 
         each(changes, function (change) {
             if (change.status === 'added') {
                 items.push(change.value);
+                indexes.push(change.index);
             }
         });
 
-        if (validArray$$1('link', items, validResult, validator)) {
-            observableArray$$1(observable());
+        if (!validArray$$1('link', items, validResult, validator)) {
+            return;
         }
+
+        var source = observable();
+
+        if (items.length) {
+            each(validResult['link'], function (validItem, i) {
+                source[indexes[i]] = validItem;
+            });
+        }
+
+        observableArray$$1(source);
     }, null, 'arrayChange');
     observable[linkedLabel$$1] = true;
 }
