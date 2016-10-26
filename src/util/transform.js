@@ -32,6 +32,7 @@ export function transform(module) {
         constructor,
         defaults,
         props,
+        getters,
         mixins,
         methods,
         computed,
@@ -66,6 +67,7 @@ export function transform(module) {
                 mixins && mixin(vm, opts, mixins);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
+                getters && pureComputedAll(vm, getters);
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
