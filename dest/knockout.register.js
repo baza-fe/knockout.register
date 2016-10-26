@@ -651,6 +651,7 @@ function transform$$1(module) {
     var constructor = finalModule.constructor;
     var defaults = finalModule.defaults;
     var props = finalModule.props;
+    var getters = finalModule.getters;
     var mixins = finalModule.mixins;
     var methods = finalModule.methods;
     var computed = finalModule.computed;
@@ -685,6 +686,7 @@ function transform$$1(module) {
                 mixins && mixin$$1(vm, opts, mixins);
                 computed && computedAll$$1(vm, computed);
                 pureComputed && pureComputedAll$$1(vm, pureComputed);
+                getters && pureComputedAll$$1(vm, getters);
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
