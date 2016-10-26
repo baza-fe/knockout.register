@@ -38,6 +38,12 @@ export default {
         }
     },
 
+    getters: {
+        full3() {
+            return `${ko.unwrap(this.first)} ${ko.unwrap(this.last)}`;
+        }
+    },
+
     style: `
         .avatar {
             color: red;

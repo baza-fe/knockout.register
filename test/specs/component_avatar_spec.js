@@ -51,8 +51,10 @@ describe('avatar', () => {
 
         expect(ko.isComputed(vm.full)).toBe(true);
         expect(ko.isComputed(vm.full2)).toBe(true);
+        expect(ko.isComputed(vm.full3)).toBe(true);
         expect(vm.full()).toBe(full);
         expect(vm.full2()).toBe(full);
+        expect(vm.full3()).toBe(full);
     });
 
     it('should create methods', () => {
