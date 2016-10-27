@@ -21,7 +21,7 @@ function getVmForNode(node) {
     return vm;
 }
 
-// query element by selector
+// query vm by selector
 //
 // @param {String} selector
 // @param {Node} context
@@ -29,7 +29,7 @@ export function querySelector(selector, context = document) {
     return getVmForNode(context.querySelector(selector));
 };
 
-// query elements by selector
+// query vms by selector
 //
 // @param {String} selector
 // @param {Node} context
@@ -41,19 +41,19 @@ export function querySelectorAll(selector, context = document) {
     });
 };
 
-// query element by id
+// query vm by id
 //
 // @param {String} selector
 // @param {Node} context
-export function getElementById() {
+export function getVmById() {
     return getVmForNode(context.getElementById(selector));
 };
 
-// query elements by tag name
+// query vms by tag name
 //
 // @param {String} selector
 // @param {Node} context
-export function getElementsByTagName(selector, context = document) {
+export function getVmsByTagName(selector, context = document) {
     const nodes = ko.utils.makeArray(context.getElementsByTagName(selector));
 
     return ko.utils.arrayMap(nodes, (node) => {
@@ -61,11 +61,11 @@ export function getElementsByTagName(selector, context = document) {
     });
 };
 
-// query elements by class name
+// query vms by class name
 //
 // @param {String} selector
 // @param {Node} context
-export function getElementsByClassName(selector, context = document) {
+export function getVmsByClassName(selector, context = document) {
     const nodes = ko.utils.makeArray(context.getElementsByClassName(selector));
 
     return ko.utils.arrayMap(nodes, (node) => {
@@ -76,6 +76,6 @@ export function getElementsByClassName(selector, context = document) {
 // extend ko.components
 ko.components.querySelector = querySelector;
 ko.components.querySelectorAll = querySelectorAll;
-ko.components.getElementById = getElementById;
-ko.components.getElementsByTagName = getElementsByTagName;
-ko.components.getElementsByClassName = getElementsByClassName;
+ko.components.getVmById = getVmById;
+ko.components.getVmsByTagName = getVmsByTagName;
+ko.components.getVmsByClassName = getVmsByClassName;

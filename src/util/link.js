@@ -18,6 +18,34 @@ function isArrayObservable(target) {
     return ko.isObservable(target) && isFunction(target.push);
 }
 
+// Link computed observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+export function linkComputedObservable(observable, validator) {
+    if (!ko.isComputed(observable)) {
+        return;
+    }
+
+    observable.subscribe((value) => {
+        const validResult = {};
+
+        if (isArray(validator) && validator.length === 1) {
+            if (!validArray('link', value, validResult, validator[0])) {
+                return;
+            }
+
+            each(validResult['link'], (validItem, i) => {
+                value[i] = validItem;
+            });
+            observableArray(value);
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+            linkObjectObservable(value, validator);
+        }
+    });
+    observable[linkedLabel] = true;
+};
+
 // Link array observable with validators
 //
 // @param {Function} observable
@@ -65,10 +93,14 @@ export function linkArrayObservable(observable, validator) {
 // @param {Object} validators
 export function linkObjectObservable(data, validators) {
     eachDict(validators, (propName, validator) => {
-        if (isArray(validator) && validator.length === 1) {
-            linkArrayObservable(data[propName], validator[0]);
+        const propValue = data[propName];
+
+        if (ko.isComputed(propValue)) {
+            linkComputedObservable(propValue, validator);
+        } else if (isArray(validator) && validator.length === 1) {
+            linkArrayObservable(propValue, validator[0]);
         } else if (isObject(validator) && !hasOwn(validator, 'type')) {
-            linkObjectObservable(data[propName], validator);
+            linkObjectObservable(propValue, validator);
         }
     });
 };

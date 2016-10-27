@@ -8,7 +8,11 @@ import {
 // @param {Object} methods
 export function computedAll(context, methods) {
     eachDict(methods, (name, method) => {
-        context[name] = ko.computed(method, context);
+        if (!ko.isObservable(method)) {
+            context[name] = ko.computed(method, context);
+        } else {
+            context[name] = method;
+        }
     });
 };
 
@@ -18,6 +22,10 @@ export function computedAll(context, methods) {
 // @param {Object} methods
 export function pureComputedAll(context, methods) {
     eachDict(methods, (name, method) => {
-        context[name] = ko.pureComputed(method, context);
+        if (!ko.isObservable(method)) {
+            context[name] = ko.pureComputed(method, context);
+        } else {
+            context[name] = method;
+        }
     });
 };

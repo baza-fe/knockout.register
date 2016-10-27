@@ -65,9 +65,9 @@ export function transform(module) {
                 }
 
                 mixins && mixin(vm, opts, mixins);
+                getters && computedAll(vm, getters);
                 computed && computedAll(vm, computed);
                 pureComputed && pureComputedAll(vm, pureComputed);
-                getters && pureComputedAll(vm, getters);
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
