@@ -8,7 +8,11 @@ this.knockout = this.knockout || {};
 // @param {Object} methods
 function computedAll$$1(context, methods) {
     eachDict(methods, function (name, method) {
-        context[name] = ko.computed(method, context);
+        if (!ko.isObservable(method)) {
+            context[name] = ko.computed(method, context);
+        } else {
+            context[name] = method;
+        }
     });
 }
 
@@ -18,7 +22,11 @@ function computedAll$$1(context, methods) {
 // @param {Object} methods
 function pureComputedAll$$1(context, methods) {
     eachDict(methods, function (name, method) {
-        context[name] = ko.pureComputed(method, context);
+        if (!ko.isObservable(method)) {
+            context[name] = ko.pureComputed(method, context);
+        } else {
+            context[name] = method;
+        }
     });
 }
 
@@ -230,6 +238,34 @@ function isArrayObservable(target) {
     return ko.isObservable(target) && isFunction(target.push);
 }
 
+// Link computed observable with validators
+//
+// @param {Function} observable
+// @param {Object|Function} validator
+function linkComputedObservable$$1(observable, validator) {
+    if (!ko.isComputed(observable)) {
+        return;
+    }
+
+    observable.subscribe(function (value) {
+        var validResult = {};
+
+        if (isArray(validator) && validator.length === 1) {
+            if (!validArray$$1('link', value, validResult, validator[0])) {
+                return;
+            }
+
+            each(validResult['link'], function (validItem, i) {
+                value[i] = validItem;
+            });
+            observableArray$$1(value);
+        } else if (isObject(validator) && !hasOwn(validator, 'type')) {
+            linkObjectObservable$$1(value, validator);
+        }
+    });
+    observable[linkedLabel$$1] = true;
+}
+
 // Link array observable with validators
 //
 // @param {Function} observable
@@ -277,10 +313,14 @@ function linkArrayObservable$$1(observable, validator) {
 // @param {Object} validators
 function linkObjectObservable$$1(data, validators) {
     eachDict(validators, function (propName, validator) {
-        if (isArray(validator) && validator.length === 1) {
-            linkArrayObservable$$1(data[propName], validator[0]);
+        var propValue = data[propName];
+
+        if (ko.isComputed(propValue)) {
+            linkComputedObservable$$1(propValue, validator);
+        } else if (isArray(validator) && validator.length === 1) {
+            linkArrayObservable$$1(propValue, validator[0]);
         } else if (isObject(validator) && !hasOwn(validator, 'type')) {
-            linkObjectObservable$$1(data[propName], validator);
+            linkObjectObservable$$1(propValue, validator);
         }
     });
 }
@@ -684,9 +724,9 @@ function transform$$1(module) {
                 }
 
                 mixins && mixin$$1(vm, opts, mixins);
+                getters && computedAll$$1(vm, getters);
                 computed && computedAll$$1(vm, computed);
                 pureComputed && pureComputedAll$$1(vm, pureComputed);
-                getters && pureComputedAll$$1(vm, getters);
 
                 vm.$opts = opts;
                 vm.$defaults = defaults;
@@ -1128,7 +1168,7 @@ function getVmForNode(node) {
     return vm;
 }
 
-// query element by selector
+// query vm by selector
 //
 // @param {String} selector
 // @param {Node} context
@@ -1138,7 +1178,7 @@ function querySelector(selector) {
     return getVmForNode(context.querySelector(selector));
 }
 
-// query elements by selector
+// query vms by selector
 //
 // @param {String} selector
 // @param {Node} context
@@ -1152,19 +1192,19 @@ function querySelectorAll(selector) {
     });
 }
 
-// query element by id
+// query vm by id
 //
 // @param {String} selector
 // @param {Node} context
-function getElementById() {
+function getVmById() {
     return getVmForNode(context.getElementById(selector));
 }
 
-// query elements by tag name
+// query vms by tag name
 //
 // @param {String} selector
 // @param {Node} context
-function getElementsByTagName(selector) {
+function getVmsByTagName(selector) {
     var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     var nodes = ko.utils.makeArray(context.getElementsByTagName(selector));
@@ -1174,11 +1214,11 @@ function getElementsByTagName(selector) {
     });
 }
 
-// query elements by class name
+// query vms by class name
 //
 // @param {String} selector
 // @param {Node} context
-function getElementsByClassName(selector) {
+function getVmsByClassName(selector) {
     var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
 
     var nodes = ko.utils.makeArray(context.getElementsByClassName(selector));
@@ -1191,9 +1231,9 @@ function getElementsByClassName(selector) {
 // extend ko.components
 ko.components.querySelector = querySelector;
 ko.components.querySelectorAll = querySelectorAll;
-ko.components.getElementById = getElementById;
-ko.components.getElementsByTagName = getElementsByTagName;
-ko.components.getElementsByClassName = getElementsByClassName;
+ko.components.getVmById = getVmById;
+ko.components.getVmsByTagName = getVmsByTagName;
+ko.components.getVmsByClassName = getVmsByClassName;
 
 // Register transition component module
 //
@@ -1222,5 +1262,18 @@ function register(module) {
 
 ko.components._register = ko.components._register || ko.components.register;
 ko.components.register = register;
+
+ko.components.store = function (props) {
+    if (!props) {
+        return null;
+    }
+
+    var validOpts = valid$$1({}, props);
+
+    observableObject$$1(validOpts);
+    linkObjectObservable$$1(validOpts, props);
+
+    return validOpts;
+};
 
 }());
