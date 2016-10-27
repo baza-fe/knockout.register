@@ -57,6 +57,15 @@ describe('avatar', () => {
         expect(vm.full3()).toBe(full);
     });
 
+    it('should not create computed properties', () => {
+        const vm = ko.components.querySelector('avatar');
+        const full = `${vm.first()} ${vm.last()}`;
+
+        expect(vm.avatar1()).toBe('avatar');
+        expect(vm.avatar2()).toBe('avatar');
+        expect(vm.avatar3()[0]).toBe('avatar');
+    });
+
     it('should create methods', () => {
         const vm = ko.components.querySelector('avatar');
 

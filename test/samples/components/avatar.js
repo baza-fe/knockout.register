@@ -41,7 +41,11 @@ export default {
     getters: {
         full3() {
             return `${ko.unwrap(this.first)} ${ko.unwrap(this.last)}`;
-        }
+        },
+
+        avatar1: ko.observable('avatar'),
+        avatar2: ko.computed(function () { return 'avatar'; }),
+        avatar3: ko.observableArray([ 'avatar' ])
     },
 
     style: `
