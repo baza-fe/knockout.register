@@ -4,3 +4,4 @@ import './core/apply';
 import './core/query';
 import './core/validator';
 import './core/register';
+import './core/store';
