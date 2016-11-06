@@ -5,6 +5,7 @@ import {
 } from '../util/';
 
 const manualRenderFlagName = '__manual_render_flag__';
+const customDisposeMethodName = '__custom_dispose_method__';
 const beginManualRenderTag = document.createComment('ko if: $data.' + manualRenderFlagName);
 const beginAfterRenderTag = document.createComment('ko template: { afterRender: ready.bind($data) }');
 const endTag = document.createComment('/ko');
@@ -20,6 +21,17 @@ const base = {
     render() {
         this[manualRenderFlagName](false);
         this[manualRenderFlagName](true);
+    },
+
+    dispose() {
+        if (isFunction(this[customDisposeMethodName])) {
+            this[customDisposeMethodName]();
+        }
+
+        if (this.componentInfo) {
+            this.componentInfo.element = null;
+            this.componentInfo = null;
+        }
     }
 };
 
@@ -36,6 +48,8 @@ const lifeComponentLoader = {
                 vm[manualRenderFlagName] = ko.observable(true).extend({ notify: 'always' });
                 vm.ready = vm.ready || noop;
                 vm.created = vm.created || noop;
+                vm[customDisposeMethodName] = vm.dispose || noop;
+                vm.dispose = base.dispose;
                 vm.ref = base.ref;
                 vm.refs = base.refs;
                 vm.render = base.render;
