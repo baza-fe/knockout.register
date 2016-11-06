@@ -43,6 +43,24 @@ describe('avatar', () => {
         expect(Avatar.methods.ready).toHaveBeenCalled();
     });
 
+    it('should invoke dispose', () => {
+        const context = { trigger: ko.observable(true) };
+
+        body.innerHTML = `
+            <div id="test">
+                <!-- ko if: trigger -->
+                    <avatar></avatar>
+                <!-- /ko -->
+            </div>
+        `;
+        Avatar.methods.dispose = jasmine.createSpy('dispose');
+        ko.components.register(Avatar);
+        ko.applyBindings(context, document.querySelector('#test'));
+        expect(Avatar.methods.dispose).not.toHaveBeenCalled();
+        context.trigger(false);
+        expect(Avatar.methods.dispose).toHaveBeenCalled();
+    });
+
     it('should lifecycle in correct sequence', () => {
         const order = [];
 
