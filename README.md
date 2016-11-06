@@ -266,12 +266,6 @@ Built-in lifecycle and custom methods.The `this` keyword refs to building view m
 export default {
     methods: {
 
-        // before create vm
-        beforeCreate() {
-            this.text(); // => throw Error: text in undefined
-            this.componentInfo.element; // => null
-        },
-
         // vm created
         created() {
             this.text(); // => ''
@@ -284,8 +278,16 @@ export default {
             this.componentInfo.element; // => element
         },
 
+        // dispose component and clean up
+        dispose() {
+            this._computedObservable.dispose();
+            this._domElement = null;
+            this._timeoutHander = null;
+        },
+
+        // custom method
         customMethod() {
-            this; // => not ref to view model all the time
+            this; // => not ensure ref to view model all the time
         }
     }
 };
