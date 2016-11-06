@@ -8,10 +8,14 @@ this.knockout = this.knockout || {};
 // @param {Object} methods
 function computedAll$$1(context, methods) {
     eachDict(methods, function (name, method) {
-        if (!ko.isObservable(method)) {
-            context[name] = ko.computed(method, context);
-        } else {
+        if (!isFunction(method)) {
+            return;
+        }
+
+        if (ko.isObservable(method)) {
             context[name] = method;
+        } else {
+            context[name] = ko.computed(method, context);
         }
     });
 }
@@ -22,10 +26,14 @@ function computedAll$$1(context, methods) {
 // @param {Object} methods
 function pureComputedAll$$1(context, methods) {
     eachDict(methods, function (name, method) {
-        if (!ko.isObservable(method)) {
-            context[name] = ko.pureComputed(method, context);
-        } else {
+        if (!isFunction(method)) {
+            return;
+        }
+
+        if (ko.isObservable(method)) {
             context[name] = method;
+        } else {
+            context[name] = ko.pureComputed(method, context);
         }
     });
 }
