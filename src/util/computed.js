@@ -1,5 +1,6 @@
 import {
-    eachDict
+    eachDict,
+    isFunction
 } from './';
 
 // create computed observalbes on context
@@ -8,10 +9,14 @@ import {
 // @param {Object} methods
 export function computedAll(context, methods) {
     eachDict(methods, (name, method) => {
-        if (!ko.isObservable(method)) {
-            context[name] = ko.computed(method, context);
-        } else {
+        if (!isFunction(method)) {
+            return;
+        }
+
+        if (ko.isObservable(method)) {
             context[name] = method;
+        } else {
+            context[name] = ko.computed(method, context);
         }
     });
 };
@@ -22,10 +27,14 @@ export function computedAll(context, methods) {
 // @param {Object} methods
 export function pureComputedAll(context, methods) {
     eachDict(methods, (name, method) => {
-        if (!ko.isObservable(method)) {
-            context[name] = ko.pureComputed(method, context);
-        } else {
+        if (!isFunction(method)) {
+            return;
+        }
+
+        if (ko.isObservable(method)) {
             context[name] = method;
+        } else {
+            context[name] = ko.pureComputed(method, context);
         }
     });
 };
