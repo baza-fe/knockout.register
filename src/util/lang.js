@@ -36,7 +36,7 @@ export const isFunction = isType('Function');
 export const isDate = isType('Date');
 export const isRegExp = isType('RegExp');
 
-const literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
+const literalRE = /^(?:true|false|null|NaN|Infinity|[+-]?\d*\.?\d*(e[+-]?\d+)?)$/i;
 
 // parse to string to primitive value
 //
