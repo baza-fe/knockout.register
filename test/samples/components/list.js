@@ -1,30 +1,28 @@
-import { constructor as Avatar } from './avatar';
-
 export default {
-    name: 'list',
+  name: 'list',
 
-    constructor(opts) {
-        this.items = ko.observableArray([
-            {
-                first: 'a',
-                last: 'a'
-            },
-            {
-                first: 'b',
-                last: 'b'
-            },
-            {
-                first: 'c',
-                last: 'c'
-            }
-        ]);
-    },
+  constructor (opts) {
+    this.items = ko.observableArray([
+      {
+        first: 'a',
+        last: 'a'
+      },
+      {
+        first: 'b',
+        last: 'b'
+      },
+      {
+        first: 'c',
+        last: 'c'
+      }
+    ])
+  },
 
-    methods: {
-        onClick() {}
-    },
+  methods: {
+    onClick () {}
+  },
 
-    template: `
+  template: `
         <ul data-bind="foreach: items">
             <li>
                 <avatar k-first="first"
@@ -41,4 +39,4 @@ export default {
             </li>
         </ul>
     `
-};
+}

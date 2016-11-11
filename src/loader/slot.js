@@ -2,42 +2,42 @@ import {
     slot,
     isObject,
     isFunction
-} from '../util/';
+} from '../util/'
 
 var slotLoader = {
-    id: 'slotLoader',
-    loadViewModel(name, vmConfig, callback) {
-        let ctor = null;
-        let originalCreateViewModel = null;
+  id: 'slotLoader',
+  loadViewModel (name, vmConfig, callback) {
+    let ctor = null
+    let originalCreateViewModel = null
 
-        function wrapperedCreateViewModel(params, componentInfo) {
-            slot(componentInfo.templateNodes, componentInfo.element);
+    function wrapperedCreateViewModel (params, componentInfo) {
+      slot(componentInfo.templateNodes, componentInfo.element)
 
-            if (ctor) {
-                return new ctor(params, componentInfo);
-            } else if (originalCreateViewModel) {
-                return originalCreateViewModel(params, componentInfo);
-            } else {
-                return null;
-            }
-        }
-
-        if (!vmConfig) {
-            return callback(null);
-        }
-
-        if (vmConfig && (isObject(vmConfig))) {
-            if (!vmConfig.createViewModel) {
-                return callback(null);
-            }
-
-            originalCreateViewModel = vmConfig.createViewModel;
-        } else if (isFunction(vmConfig)) {
-            ctor = vmConfig;
-        }
-
-        callback(wrapperedCreateViewModel);
+      if (ctor) {
+        return new ctor(params, componentInfo) // eslint-disable-line
+      } else if (originalCreateViewModel) {
+        return originalCreateViewModel(params, componentInfo)
+      } else {
+        return null
+      }
     }
-};
 
-ko.components.loaders.unshift(slotLoader);
+    if (!vmConfig) {
+      return callback(null)
+    }
+
+    if (vmConfig && (isObject(vmConfig))) {
+      if (!vmConfig.createViewModel) {
+        return callback(null)
+      }
+
+      originalCreateViewModel = vmConfig.createViewModel
+    } else if (isFunction(vmConfig)) {
+      ctor = vmConfig
+    }
+
+    callback(wrapperedCreateViewModel)
+  }
+}
+
+ko.components.loaders.unshift(slotLoader)

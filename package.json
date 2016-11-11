@@ -32,6 +32,26 @@
     "rollup-plugin-commonjs": "^3.0.0",
     "rollup-plugin-node-resolve": "^1.7.0"
   },
+  "standard": {
+    "ignore": [
+      "dest/",
+      "test/lib/"
+    ],
+    "global": [
+      "ko",
+      "Node",
+      "Element",
+      "it",
+      "describe",
+      "expect",
+      "beforeAll",
+      "afterAll",
+      "beforeEach",
+      "afterEach",
+      "spyOn",
+      "jasmine"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/differui/knockout.register.git"

@@ -1,18 +1,18 @@
 import {
     valid,
     linkObjectObservable,
-    observableObject,
-} from '../util/';
+    observableObject
+} from '../util/'
 
 ko.components.store = (props) => {
-    if (!props) {
-        return null;
-    }
+  if (!props) {
+    return null
+  }
 
-    const validOpts = valid({}, props);
+  const validOpts = valid({}, props)
 
-    observableObject(validOpts);
-    linkObjectObservable(validOpts, props);
+  observableObject(validOpts)
+  linkObjectObservable(validOpts, props)
 
-    return validOpts;
-};
+  return validOpts
+}
