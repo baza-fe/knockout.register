@@ -96,7 +96,7 @@ var isFunction = isType('Function');
 var isDate = isType('Date');
 var isRegExp = isType('RegExp');
 
-var literalRE = /^(?:true|false|null|NaN|Infinity|[\+\-\d\.e]+)$/i;
+var literalRE = /^(?:true|false|null|NaN|Infinity|[+-]?\d*\.?\d*(e[+-]?\d+)?)$/i;
 
 // parse to string to primitive value
 //
