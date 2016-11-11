@@ -1,4 +1,4 @@
 export default {
-    on() {},
-    off() {}
-};
+  on () {},
+  off () {}
+}

@@ -1,6 +1,6 @@
 {
   "name": "knockout.register",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Enhanced knockout component module",
   "main": "dest/knockout.register.js",
   "scripts": {
@@ -31,6 +31,26 @@
     "rollup-plugin-babel": "^2.5.1",
     "rollup-plugin-commonjs": "^3.0.0",
     "rollup-plugin-node-resolve": "^1.7.0"
+  },
+  "standard": {
+    "ignore": [
+      "dest/",
+      "test/lib/"
+    ],
+    "global": [
+      "ko",
+      "Node",
+      "Element",
+      "it",
+      "describe",
+      "expect",
+      "beforeAll",
+      "afterAll",
+      "beforeEach",
+      "afterEach",
+      "spyOn",
+      "jasmine"
+    ]
   },
   "repository": {
     "type": "git",
